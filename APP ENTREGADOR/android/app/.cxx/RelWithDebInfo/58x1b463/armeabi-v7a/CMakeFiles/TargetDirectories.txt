@@ -1,0 +1,2 @@
+/Users/6amtech/Projects/6amMart-Delivery-App/android/app/.cxx/RelWithDebInfo/58x1b463/armeabi-v7a/CMakeFiles/edit_cache.dir
+/Users/6amtech/Projects/6amMart-Delivery-App/android/app/.cxx/RelWithDebInfo/58x1b463/armeabi-v7a/CMakeFiles/rebuild_cache.dir

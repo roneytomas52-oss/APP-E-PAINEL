@@ -1,0 +1,2 @@
+/Users/mostafizurrahman/StudioProjects/6amMart-User-App/android/app/.cxx/Debug/2l1s194b/armeabi-v7a/CMakeFiles/edit_cache.dir
+/Users/mostafizurrahman/StudioProjects/6amMart-User-App/android/app/.cxx/Debug/2l1s194b/armeabi-v7a/CMakeFiles/rebuild_cache.dir

@@ -1,0 +1,8 @@
+{
+    "Gateways": true,
+    "Rental": true,
+    "Controller": true,
+    "TaxModule": true,
+    "AI": true,
+    "RideShare": true
+}

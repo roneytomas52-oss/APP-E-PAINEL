@@ -1,0 +1,560 @@
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:sixam_mart/common/widgets/custom_ink_well.dart';
+import 'package:sixam_mart/common/widgets/zone_warning_dialog.dart';
+import 'package:sixam_mart/features/cart/controllers/cart_controller.dart';
+import 'package:sixam_mart/features/item/controllers/item_controller.dart';
+import 'package:sixam_mart/features/item/domain/models/item_model.dart';
+import 'package:sixam_mart/features/location/controllers/location_controller.dart';
+import 'package:sixam_mart/features/splash/controllers/splash_controller.dart';
+import 'package:sixam_mart/features/checkout/domain/models/place_order_body_model.dart';
+import 'package:sixam_mart/features/cart/domain/models/cart_model.dart';
+import 'package:sixam_mart/helper/address_helper.dart';
+import 'package:sixam_mart/helper/price_converter.dart';
+import 'package:sixam_mart/helper/route_helper.dart';
+import 'package:sixam_mart/util/dimensions.dart';
+import 'package:sixam_mart/util/images.dart';
+import 'package:sixam_mart/util/styles.dart';
+import 'package:sixam_mart/common/widgets/cart_snackbar.dart';
+import 'package:sixam_mart/common/widgets/confirmation_dialog.dart';
+import 'package:sixam_mart/common/widgets/custom_button.dart';
+import 'package:sixam_mart/common/widgets/custom_image.dart';
+import 'package:sixam_mart/common/widgets/footer_view.dart';
+import 'package:sixam_mart/features/checkout/screens/checkout_screen.dart';
+import 'package:sixam_mart/features/item/screens/item_details_screen.dart';
+import 'package:sixam_mart/features/item/widgets/item_title_view_widget.dart';
+
+import '../../../common/widgets/add_favourite_view.dart';
+import '../../../common/widgets/discount_tag.dart';
+
+class DetailsWebViewWidget extends StatefulWidget {
+  final CartModel? cartModel;
+  final int? stock;
+  final double priceWithAddOns;
+  final OnlineCart? cart;
+  const DetailsWebViewWidget({super.key, required this.cartModel, required this.stock, required this.priceWithAddOns, this.cart});
+
+  @override
+  State<DetailsWebViewWidget> createState() => _DetailsWebViewWidgetState();
+}
+
+class _DetailsWebViewWidgetState extends State<DetailsWebViewWidget> {
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _addButtonKey = GlobalKey();
+  bool _showBottomView = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_checkVisibility);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkVisibility());
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_checkVisibility);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _checkVisibility() {
+    final RenderBox? renderBox = _addButtonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (renderBox != null) {
+      final position = renderBox.localToGlobal(Offset.zero);
+      final screenHeight = MediaQuery.of(context).size.height;
+
+      // Check if the button is below the bottom of the screen
+      final isBelowScreen = position.dy > screenHeight;
+
+      if (isBelowScreen != _showBottomView) {
+        setState(() {
+          _showBottomView = isBelowScreen;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GetBuilder<ItemController>(builder: (itemController) {
+      List<String?> imageList = [];
+      imageList.add(itemController.item!.imageFullUrl);
+      if(itemController.item!.imagesFullUrl != null) {
+        imageList.addAll(itemController.item!.imagesFullUrl!);
+      }
+
+      return Stack(children: [
+        SingleChildScrollView(
+          controller: _scrollController,
+          child: FooterView(child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height - 560),
+            child: Column(mainAxisAlignment: MainAxisAlignment.start, children: [
+              const SizedBox(height: 20),
+              Center(child: SizedBox(width: Dimensions.webMaxWidth, child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 4,child: SingleChildScrollView(
+                      physics: const NeverScrollableScrollPhysics(),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+
+                          Stack(
+                            children: [
+                              SizedBox(
+                                height: Get.size.height * 0.5,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(Dimensions.radiusMedium),
+                                  child: CustomImage(
+                                    fit: BoxFit.cover, height: Get.size.height * 0.5, width: double.infinity,
+                                    image: '${imageList[itemController.productSelect]}',
+                                  ),
+                                ),
+                              ),
+
+                              DiscountTag(
+                                discount: itemController.item?.discount,
+                                discountType: itemController.item?.discountType,
+                                freeDelivery: false,
+                              ),
+
+                              AddFavouriteView(item: itemController.item),
+
+                              imageList.length > 1 ? Positioned(
+                                left: 10, top: Get.size.height * 0.5 / 2 - 30,
+                                child: InkWell(
+                                  onTap: () => itemController.setSelect(itemController.productSelect == 0 ? imageList.length - 1 : itemController.productSelect - 1, true),
+                                  child: const Icon(Icons.arrow_back_ios, color: Colors.black, size: 16),
+                                ),
+                              ) : const SizedBox(),
+
+                              imageList.length > 1 ? Positioned(
+                                right: 5, top: Get.size.height * 0.5 / 2 - 30,
+                                child: InkWell(
+                                  onTap: () => itemController.setSelect(itemController.productSelect == imageList.length - 1 ? 0 : itemController.productSelect + 1, true),
+                                  child: const Icon(Icons.arrow_forward_ios, color: Colors.black, size: 16),
+                                ),
+                              ) : const SizedBox(),
+
+                            ],
+                          ),
+                          const SizedBox(height: 15),
+
+                          SizedBox(height: 70, child: itemController.item!.imageFullUrl != null ? ListView.builder(
+                            itemCount: imageList.length,
+                            scrollDirection: Axis.horizontal,
+                            itemBuilder: (context,index){
+                              return Padding(
+                                padding: const EdgeInsets.only(right: Dimensions.paddingSizeSmall),
+                                child: InkWell(
+                                  onTap: () => itemController.setSelect(index, true),
+                                  child: Container(
+                                    width: 70,
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).cardColor,
+                                      borderRadius: BorderRadius.circular(Dimensions.radiusMedium),
+                                      border: Border.all(color: index == itemController.productSelect ? Theme.of(context).primaryColor : Colors.transparent),
+                                    ),
+                                    padding: const EdgeInsets.all(2),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(Dimensions.radiusMedium),
+                                      child: CustomImage(
+                                        fit: BoxFit.cover,
+                                        image: '${imageList[index]}',
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ) : const SizedBox()),
+
+                        ],
+                      ),
+                    )),
+                    const SizedBox(width: 40),
+
+                    Expanded(flex: 6, child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ItemTitleViewWidget(item: itemController.item, inStock: Get.find<SplashController>().configModel!.moduleConfig!.module!.stock! && widget.stock! <= 0),
+
+                          (itemController.item!.description != null && itemController.item!.description!.isNotEmpty) ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: Dimensions.paddingSizeSmall),
+                              Text('description'.tr, style: robotoBold),
+                              const SizedBox(height: Dimensions.paddingSizeExtraSmall),
+
+                              Text(
+                                itemController.item!.description!,
+                                style: robotoRegular,
+                                maxLines: itemController.isReadMore ? 10 : 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+
+                              itemController.item!.description!.length > 150 ? InkWell(
+                                onTap: () => itemController.changeReadMore(),
+                                child: Text(
+                                  itemController.isReadMore ? "read_less".tr : "read_more".tr,
+                                  style: robotoRegular.copyWith(color: Colors.blueAccent),
+                                ),
+                              ) : const SizedBox(),
+
+                              const SizedBox(height: Dimensions.paddingSizeDefault),
+                            ],
+                          ) : const SizedBox(),
+
+                          (itemController.item!.nutritionsName != null && itemController.item!.nutritionsName!.isNotEmpty) ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('nutrition_details'.tr, style: robotoBold),
+                              const SizedBox(height: Dimensions.paddingSizeExtraSmall),
+
+                              Wrap(children: List.generate(itemController.item!.nutritionsName!.length, (index) {
+                                return Text(
+                                  '${itemController.item!.nutritionsName![index]}${itemController.item!.nutritionsName!.length-1 == index ? '.' : ', '}',
+                                  style: robotoRegular.copyWith(color: Theme.of(context).textTheme.bodyLarge!.color?.withValues(alpha: 0.5)),
+                                );
+                              })),
+                              const SizedBox(height: Dimensions.paddingSizeLarge),
+                            ],
+                          ) : const SizedBox(),
+
+                          (itemController.item!.allergiesName != null && itemController.item!.allergiesName!.isNotEmpty) ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('allergic_ingredients'.tr, style: robotoBold),
+                              const SizedBox(height: Dimensions.paddingSizeExtraSmall),
+
+                              Wrap(children: List.generate(itemController.item!.allergiesName!.length, (index) {
+                                return Text(
+                                  '${itemController.item!.allergiesName![index]}${itemController.item!.allergiesName!.length-1 == index ? '.' : ', '}',
+                                  style: robotoRegular.copyWith(color: Theme.of(context).textTheme.bodyLarge!.color?.withValues(alpha: 0.5)),
+                                );
+                              })),
+                              const SizedBox(height: Dimensions.paddingSizeLarge),
+                            ],
+                          ) : const SizedBox(),
+
+                          itemController.item!.isPrescriptionRequired! ? Container(
+                            padding: const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeSmall, vertical: Dimensions.paddingSizeExtraSmall),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(Dimensions.radiusSmall),
+                            ),
+                            child: Text(
+                              '* ${'prescription_required'.tr}',
+                              style: robotoRegular.copyWith(fontSize: Dimensions.fontSizeSmall, color: Theme.of(context).colorScheme.error),
+                            ),
+                          ) : const SizedBox(),
+                          const SizedBox(height: Dimensions.paddingSizeSmall),
+
+                          ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: itemController.item!.choiceOptions!.length,
+                            physics: const NeverScrollableScrollPhysics(),
+                            padding: EdgeInsets.zero,
+                            itemBuilder: (context, index) {
+                              return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Text(itemController.item!.choiceOptions![index].title!, style: robotoBold),
+                                const SizedBox(height: Dimensions.paddingSizeSmall),
+
+                                Wrap(children: List.generate(itemController.item!.choiceOptions![index].options!.length, (i) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: Dimensions.paddingSizeDefault),
+                                    child: CustomInkWell(
+                                      onTap: () {
+                                        itemController.setCartVariationIndex(index, i, itemController.item);
+                                      },
+                                      radius: Dimensions.radiusLarge,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: Dimensions.paddingSizeSmall, vertical: Dimensions.paddingSizeExtraSmall),
+                                        decoration: BoxDecoration(
+                                            color: itemController.variationIndex![index] != i ? Theme.of(context).cardColor : Theme.of(context).primaryColor,
+                                            borderRadius: BorderRadius.circular(Dimensions.radiusSmall),
+                                            border: Border.all(color: itemController.variationIndex![index] != i ? Theme.of(context).disabledColor.withValues(alpha: 0.5) : Theme.of(context).primaryColor)
+                                        ),
+                                        child: Text(
+                                          itemController.item!.choiceOptions![index].options![i].trim(), maxLines: 1, overflow: TextOverflow.ellipsis,
+                                          style: robotoRegular.copyWith(
+                                            color: itemController.variationIndex![index] != i ? Theme.of(context).textTheme.bodyLarge?.color?.withValues(alpha: 0.7) : Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                })),
+
+                                SizedBox(height: index != itemController.item!.choiceOptions!.length-1 ? Dimensions.paddingSizeLarge : 0),
+                              ]);
+                            },
+                          ),
+                          const SizedBox(height: 30),
+
+                          GetBuilder<CartController>(builder: (cartController) {
+                            return Row(children: [
+                              Text('${'total_amount'.tr}:', style: robotoBold),
+                              const SizedBox(width: Dimensions.paddingSizeExtraSmall),
+
+                              Text(PriceConverter.convertPrice(itemController.cartIndex != -1
+                                  ? _getItemDetailsDiscountPrice(cart: Get.find<CartController>().cartList[itemController.cartIndex])
+                                  : widget.priceWithAddOns), textDirection: TextDirection.ltr, style: robotoBold.copyWith(
+                                color: Theme.of(context).primaryColor, fontSize: Dimensions.fontSizeLarge,
+                              )),
+                            ]);
+                          }),
+                          const SizedBox(height: Dimensions.paddingSizeDefault),
+
+                          Row(key: _addButtonKey, children: [
+
+                            GetBuilder<CartController>(builder: (cartController) {
+                              return Row(children: [
+                                QuantityButton(
+                                  isIncrement: false, quantity: itemController.cartIndex != -1 ? cartController.cartList[itemController.cartIndex].quantity : itemController.quantity,
+                                  stock: widget.stock, isExistInCart : itemController.cartIndex != -1, cartIndex: itemController.cartIndex,
+                                  quantityLimit : itemController.cartIndex != -1 ? cartController.cartList[itemController.cartIndex].quantityLimit : itemController.item!.quantityLimit,
+                                  cartController: cartController,
+                                ),
+                                const SizedBox(width: 30),
+
+                                Text(
+                                  itemController.cartIndex != -1 ? cartController.cartList[itemController.cartIndex].quantity.toString() : itemController.quantity.toString(),
+                                  style: robotoBold.copyWith(fontSize: Dimensions.fontSizeExtraLarge),
+                                ),
+                                const SizedBox(width: 30),
+
+                                QuantityButton(
+                                  isIncrement: true, quantity: itemController.cartIndex != -1 ? cartController.cartList[itemController.cartIndex].quantity : itemController.quantity,
+                                  stock: widget.stock, cartIndex: itemController.cartIndex, isExistInCart: itemController.cartIndex != -1,
+                                  quantityLimit : itemController.cartIndex != -1 ? cartController.cartList[itemController.cartIndex].quantityLimit : itemController.item!.quantityLimit,
+                                  cartController: cartController,
+                                ),
+
+                              ]);
+                            }),
+                            const SizedBox(width: Dimensions.paddingSizeLarge),
+
+                            GetBuilder<CartController>(
+                              builder: (cartController) {
+                                return CustomButton(
+                                  width: 300,
+                                  isLoading: cartController.isLoading,
+                                  buttonText: (Get.find<SplashController>().configModel!.moduleConfig!.module!.stock! && widget.stock! <= 0) ? 'out_of_stock'.tr
+                                      : itemController.item!.availableDateStarts != null ? 'order_now'.tr : itemController.cartIndex != -1 ? 'update_in_cart'.tr : 'add_to_cart'.tr,
+                                  onPressed: (!Get.find<SplashController>().configModel!.moduleConfig!.module!.stock! || widget.stock! > 0) ?  () async {
+                                    if(AddressHelper.getUserAddressFromSharedPref() == null) {
+                                      Get.dialog(ZoneWarningDialog(
+                                        title: 'insert_delivery_location'.tr, description: 'please_insert_delivery_location'.tr,
+                                        buttonText: 'pick_from_map'.tr, onPressed: () {
+                                          Get.back();
+                                          Get.find<LocationController>().navigateToLocationScreen('home', canRoute: true);
+                                          },
+                                      ));
+                                      //   Get.back();
+                                      // Get.find<LocationController>().navigateToLocationScreen('home', canRoute: true);
+                                      return;
+                                    }
+                                    if(itemController.item!.availableDateStarts != null) {
+                                      Get.toNamed(RouteHelper.getCheckoutRoute('campaign'), arguments: CheckoutScreen(
+                                        storeId: null, fromCart: false, cartList: [widget.cartModel],
+                                      ));
+                                    }else if (Get.find<CartController>().existAnotherStoreItem(widget.cartModel!.item!.storeId, Get.find<SplashController>().module!.id)) {
+                                      Get.dialog(ConfirmationDialog(
+                                        icon: Images.warning,
+                                        title: 'are_you_sure_to_reset'.tr,
+                                        description: Get.find<SplashController>().configModel!.moduleConfig!.module!.showRestaurantText!
+                                            ? 'if_you_continue'.tr : 'if_you_continue_without_another_store'.tr,
+                                        onYesPressed: () {
+                                          Get.back();
+                                          cartController.clearCartOnline().then((success) async {
+                                            if(success) {
+                                              await cartController.addToCartOnline(widget.cart!);
+                                              itemController.setExistInCart(itemController.item, null);
+                                              showCartSnackBar();
+                                            }
+                                          });
+                                        },
+                                      ), barrierDismissible: false);
+                                    } else {
+                                      if(itemController.cartIndex == -1) {
+                                        await cartController.addToCartOnline(widget.cart!).then((success) {
+                                          if(success){
+                                            itemController.setExistInCart(itemController.item, null);
+                                            showCartSnackBar();
+                                          }
+                                        });
+                                      } else {
+                                        await cartController.updateCartOnline(widget.cart!).then((success) {
+                                          if(success) {
+                                            showCartSnackBar();
+                                          }
+                                        });
+                                      }
+                                    }
+                                  } : null,
+                                );
+                              }
+                            ),
+
+                          ]),
+
+
+                          const SizedBox(height: Dimensions.paddingSizeExtremeLarge),
+                        ]),
+                    )),
+                  ]))),
+            ]),
+          ),
+        )),
+
+        _showBottomView ? Positioned(
+          bottom: 0, left: 0, right: 0,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              boxShadow: [BoxShadow(color: Theme.of(context).disabledColor.withValues(alpha: 0.2), blurRadius: 10, spreadRadius: 2)],
+            ),
+            padding: const EdgeInsets.symmetric(vertical: Dimensions.paddingSizeSmall),
+            child: Center(
+              child: SizedBox(
+                width: Dimensions.webMaxWidth,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+
+                    GetBuilder<CartController>(builder: (cartController) {
+                      return Row(children: [
+                        Text('${'total_amount'.tr}:', style: robotoBold),
+                        const SizedBox(width: Dimensions.paddingSizeExtraSmall),
+
+                        Text(PriceConverter.convertPrice(itemController.cartIndex != -1
+                            ? _getItemDetailsDiscountPrice(cart: Get.find<CartController>().cartList[itemController.cartIndex])
+                            : widget.priceWithAddOns), textDirection: TextDirection.ltr, style: robotoBold.copyWith(
+                          color: Theme.of(context).primaryColor, fontSize: Dimensions.fontSizeLarge,
+                        )),
+                      ]);
+                    }),
+
+                   Row(children: [
+                     GetBuilder<CartController>(builder: (cartController) {
+                       return Row(children: [
+                         QuantityButton(
+                           isIncrement: false, quantity: itemController.cartIndex != -1 ? cartController.cartList[itemController.cartIndex].quantity : itemController.quantity,
+                           stock: widget.stock, isExistInCart : itemController.cartIndex != -1, cartIndex: itemController.cartIndex,
+                           quantityLimit : itemController.cartIndex != -1 ? cartController.cartList[itemController.cartIndex].quantityLimit : itemController.item!.quantityLimit,
+                           cartController: cartController,
+                         ),
+                         const SizedBox(width: 30),
+
+                         Text(
+                           itemController.cartIndex != -1 ? cartController.cartList[itemController.cartIndex].quantity.toString() : itemController.quantity.toString(),
+                           style: robotoBold.copyWith(fontSize: Dimensions.fontSizeExtraLarge),
+                         ),
+                         const SizedBox(width: 30),
+
+                         QuantityButton(
+                           isIncrement: true, quantity: itemController.cartIndex != -1 ? cartController.cartList[itemController.cartIndex].quantity : itemController.quantity,
+                           stock: widget.stock, cartIndex: itemController.cartIndex, isExistInCart: itemController.cartIndex != -1,
+                           quantityLimit : itemController.cartIndex != -1 ? cartController.cartList[itemController.cartIndex].quantityLimit : itemController.item!.quantityLimit,
+                           cartController: cartController,
+                         ),
+
+                       ]);
+                     }),
+                     const SizedBox(width: Dimensions.paddingSizeLarge),
+
+                     GetBuilder<CartController>(
+                         builder: (cartController) {
+                           return CustomButton(
+                             width: 300,
+                             isLoading: cartController.isLoading,
+                             buttonText: (Get.find<SplashController>().configModel!.moduleConfig!.module!.stock! && widget.stock! <= 0) ? 'out_of_stock'.tr
+                                 : itemController.item!.availableDateStarts != null ? 'order_now'.tr : itemController.cartIndex != -1 ? 'update_in_cart'.tr : 'add_to_cart'.tr,
+                             onPressed: (!Get.find<SplashController>().configModel!.moduleConfig!.module!.stock! || widget.stock! > 0) ?  () async {
+                               if(AddressHelper.getUserAddressFromSharedPref() == null) {
+                                 Get.dialog(ZoneWarningDialog(
+                                   title: 'insert_delivery_location'.tr, description: 'please_insert_delivery_location'.tr,
+                                   buttonText: 'pick_from_map'.tr, onPressed: () {
+                                   Get.back();
+                                   Get.find<LocationController>().navigateToLocationScreen('home', canRoute: true);
+                                 },
+                                 ));
+                                 // Get.find<LocationController>().navigateToLocationScreen('home', canRoute: true);
+                                 return;
+                               }
+                               if(itemController.item!.availableDateStarts != null) {
+                                 Get.toNamed(RouteHelper.getCheckoutRoute('campaign'), arguments: CheckoutScreen(
+                                   storeId: null, fromCart: false, cartList: [widget.cartModel],
+                                 ));
+                               }else if (Get.find<CartController>().existAnotherStoreItem(widget.cartModel!.item!.storeId, Get.find<SplashController>().module!.id)) {
+                                 Get.dialog(ConfirmationDialog(
+                                   icon: Images.warning,
+                                   title: 'are_you_sure_to_reset'.tr,
+                                   description: Get.find<SplashController>().configModel!.moduleConfig!.module!.showRestaurantText!
+                                       ? 'if_you_continue'.tr : 'if_you_continue_without_another_store'.tr,
+                                   onYesPressed: () {
+                                     Get.back();
+                                     cartController.clearCartOnline().then((success) async {
+                                       if(success) {
+                                         await cartController.addToCartOnline(widget.cart!);
+                                         itemController.setExistInCart(itemController.item, null);
+                                         showCartSnackBar();
+                                       }
+                                     });
+                                   },
+                                 ), barrierDismissible: false);
+                               } else {
+                                 if(itemController.cartIndex == -1) {
+                                   await cartController.addToCartOnline(widget.cart!).then((success) {
+                                     if(success){
+                                       itemController.setExistInCart(itemController.item, null);
+                                       showCartSnackBar();
+                                     }
+                                   });
+                                 } else {
+                                   await cartController.updateCartOnline(widget.cart!).then((success) {
+                                     if(success) {
+                                       showCartSnackBar();
+                                     }
+                                   });
+                                 }
+                               }
+                             } : null,
+                           );
+                         }
+                     ),
+                   ],),
+
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ) : const SizedBox(),
+      ]);
+    });
+  }
+
+  double _getItemDetailsDiscountPrice({required CartModel cart}) {
+    double discountedPrice = 0;
+
+    double? discount = cart.item!.discount;
+    String? discountType = cart.item!.discountType;
+    String variationType = cart.variation != null && cart.variation!.isNotEmpty ? cart.variation![0].type! : '';
+
+    if(cart.variation != null && cart.variation!.isNotEmpty){
+      for (Variation variation in cart.item!.variations!) {
+        if (variation.type == variationType) {
+          discountedPrice = (PriceConverter.convertWithDiscount(variation.price!, discount, discountType)! * cart.quantity!);
+          break;
+        }
+      }
+    } else {
+      discountedPrice = (PriceConverter.convertWithDiscount(cart.item!.price!, discount, discountType)! * cart.quantity!);
+    }
+
+    return discountedPrice;
+  }
+}
