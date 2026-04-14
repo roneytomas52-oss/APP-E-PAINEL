@@ -114,6 +114,15 @@ class IncomingOfferActivity : Activity() {
             ?: "Revise os detalhes no app para confirmar o contexto da oferta."
 
         if (orderId.isNullOrBlank() || resolveOfferType().isBlank()) {
+            IncomingOfferLog.i(
+                stage = "fallback_triggered",
+                source = IncomingOfferContract.SOURCE_ANDROID_ACTIVITY,
+                orderId = orderId,
+                eventToken = eventToken,
+                moduleType = moduleType,
+                type = type,
+                message = "invalid payload for activity",
+            )
             finishSafely()
             return
         }
@@ -126,6 +135,15 @@ class IncomingOfferActivity : Activity() {
         titleView.text = title
         offerBodyView.text = body
         offerMetaView.text = buildMetaText()
+        IncomingOfferLog.i(
+            stage = "activity_opened",
+            source = IncomingOfferContract.SOURCE_ANDROID_ACTIVITY,
+            orderId = orderId,
+            eventToken = eventToken,
+            moduleType = moduleType,
+            type = type,
+            message = if (fromNewIntent) "refreshed" else "created",
+        )
 
         scheduleExpiry()
         notificationId?.let { NotificationManagerCompat.from(this).cancel(it) }
@@ -265,6 +283,14 @@ class IncomingOfferActivity : Activity() {
         IncomingOfferNotificationHelper.cancelExpiryBroadcast(this, notificationId)
         notificationId?.let { NotificationManagerCompat.from(this).cancel(it) }
         IncomingOfferNotificationHelper.clearOfferTracking(orderId)
+        IncomingOfferLog.i(
+            stage = "activity_closed",
+            source = IncomingOfferContract.SOURCE_ANDROID_ACTIVITY,
+            orderId = orderId,
+            eventToken = eventToken,
+            moduleType = moduleType,
+            type = type,
+        )
         if (activeActivity.get()?.get() == this) {
             activeActivity.set(null)
         }

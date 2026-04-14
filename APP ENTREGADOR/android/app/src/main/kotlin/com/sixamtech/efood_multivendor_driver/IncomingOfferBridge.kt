@@ -102,6 +102,16 @@ class IncomingOfferBridge(
     }
 
     private fun enqueueEvent(event: Map<String, Any?>) {
+        IncomingOfferLog.i(
+            stage = event["event"]?.toString() ?: "offer_event",
+            source = event["source"]?.toString(),
+            orderId = event["order_id"]?.toString(),
+            eventId = event["event_id"]?.toString(),
+            eventToken = (event["payload"] as? Map<*, *>)?.get("event_token")?.toString(),
+            moduleType = (event["payload"] as? Map<*, *>)?.get("module_type")?.toString(),
+            type = event["type"]?.toString(),
+            message = "bridge_event_enqueued",
+        )
         val sink = eventSink
         if (sink == null) {
             synchronized(pendingEvents) {

@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:get/get.dart';
 import 'package:sixam_mart_delivery/features/delivery_module/order/domain/models/incoming_offer_bridge_event.dart';
 import 'package:sixam_mart_delivery/features/delivery_module/order/services/incoming_offer_bridge.dart';
+import 'package:sixam_mart_delivery/features/delivery_module/order/services/incoming_offer_rollout.dart';
 import 'package:sixam_mart_delivery/helper/incoming_offer_dispatcher.dart' as legacy_dispatcher;
 
 class IncomingOfferDispatcher {
@@ -55,6 +56,16 @@ class IncomingOfferDispatcher {
   void dispatchBridgeEvent(IncomingOfferBridgeEvent event) {
     _cleanupProcessedBridgeEvents();
     if (!_supportedEvents.contains(event.event) || !_markProcessed(event.eventId)) {
+      logIncomingOffer(
+        'dedupe_discarded',
+        source: event.source,
+        orderId: event.orderId,
+        eventId: event.eventId,
+        eventToken: event.payload['event_token']?.toString(),
+        moduleType: event.payload['module_type']?.toString(),
+        type: event.type,
+        message: 'bridge event skipped',
+      );
       return;
     }
 
@@ -92,6 +103,16 @@ class IncomingOfferDispatcher {
       source: source,
     );
     if (!_markProcessed(event.eventId)) {
+      logIncomingOffer(
+        'dedupe_discarded',
+        source: source,
+        orderId: event.orderId,
+        eventId: event.eventId,
+        eventToken: event.payload['event_token']?.toString(),
+        moduleType: event.payload['module_type']?.toString(),
+        type: event.type,
+        message: 'fcm event skipped',
+      );
       return;
     }
 
@@ -132,6 +153,16 @@ class IncomingOfferDispatcher {
   }
 
   void _dispatchToOfferFlow(IncomingOfferBridgeEvent event, {required bool triggerPresentation}) {
+    logIncomingOffer(
+      'offer_received',
+      source: event.source,
+      orderId: event.orderId,
+      eventId: event.eventId,
+      eventToken: event.payload['event_token']?.toString(),
+      moduleType: event.payload['module_type']?.toString(),
+      type: event.type,
+      message: 'dispatch_to_offer_flow triggerPresentation=$triggerPresentation',
+    );
     final Map<String, dynamic> payload = <String, dynamic>{
       ...event.payload,
       'event_id': event.eventId,

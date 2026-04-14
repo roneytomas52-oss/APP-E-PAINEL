@@ -12,6 +12,7 @@ import 'package:sixam_mart_delivery/features/chat/controllers/chat_controller.da
 import 'package:sixam_mart_delivery/features/dashboard/screens/dashboard_screen.dart';
 import 'package:sixam_mart_delivery/features/delivery_module/order/services/incoming_offer_dispatcher.dart';
 import 'package:sixam_mart_delivery/features/delivery_module/order/services/incoming_offer_bridge.dart';
+import 'package:sixam_mart_delivery/features/delivery_module/order/services/incoming_offer_rollout.dart';
 import 'package:sixam_mart_delivery/features/notification/controllers/notification_controller.dart';
 import 'package:sixam_mart_delivery/features/delivery_module/order/controllers/order_controller.dart';
 import 'package:sixam_mart_delivery/features/notification/domain/models/notification_body_model.dart';
@@ -89,6 +90,17 @@ class NotificationHelper {
           body: message.data['body']?.toString() ?? message.notification?.body,
           moduleType: message.data['module_type']?.toString(),
           orderType: message.data['order_type']?.toString(),
+        );
+      } else {
+        logIncomingOffer(
+          'fallback_triggered',
+          source: 'fcm_foreground',
+          orderId: message.data['order_id']?.toString(),
+          eventId: message.data['event_id']?.toString(),
+          eventToken: message.data['event_token']?.toString(),
+          moduleType: message.data['module_type']?.toString(),
+          type: message.data['type']?.toString(),
+          message: 'native takeover disabled or ineligible',
         );
       }
 
@@ -292,24 +304,73 @@ class NotificationHelper {
 
 
   static bool _shouldUseNativeIncomingOffer(Map<String, dynamic> data) {
+    if (!IncomingOfferRollout.aggressiveTakeoverEnabled) {
+      logIncomingOffer(
+        'takeover_not_eligible',
+        source: 'fcm_foreground',
+        orderId: data['order_id']?.toString(),
+        eventId: data['event_id']?.toString(),
+        eventToken: data['event_token']?.toString(),
+        moduleType: data['module_type']?.toString(),
+        type: data['type']?.toString(),
+        message: 'feature flag disabled',
+      );
+      return false;
+    }
+
     final String type = data['type']?.toString() ?? '';
     if (type != 'new_order' && type != 'order_request') {
+      logIncomingOffer(
+        'takeover_not_eligible',
+        source: 'fcm_foreground',
+        orderId: data['order_id']?.toString(),
+        eventId: data['event_id']?.toString(),
+        eventToken: data['event_token']?.toString(),
+        moduleType: data['module_type']?.toString(),
+        type: type,
+        message: 'unsupported type',
+      );
       return false;
     }
 
     final dynamic orderId = data['order_id'];
     final String normalizedOrderId = orderId?.toString().trim() ?? '';
     if (normalizedOrderId.isEmpty) {
+      logIncomingOffer(
+        'takeover_not_eligible',
+        source: 'fcm_foreground',
+        moduleType: data['module_type']?.toString(),
+        type: type,
+        message: 'missing order_id',
+      );
       return false;
     }
 
     final String moduleType = data['module_type']?.toString().trim().toLowerCase() ?? '';
     if (moduleType.isEmpty) {
+      logIncomingOffer(
+        'takeover_not_eligible',
+        source: 'fcm_foreground',
+        orderId: normalizedOrderId,
+        type: type,
+        message: 'missing module_type',
+      );
       return false;
     }
 
     const Set<String> eligibleModules = <String>{'food', 'grocery', 'parcel', 'pharmacy'};
-    return eligibleModules.contains(moduleType);
+    final bool isEligible = eligibleModules.contains(moduleType);
+    logIncomingOffer(
+      isEligible ? 'takeover_eligible' : 'takeover_not_eligible',
+      source: 'fcm_foreground',
+      orderId: normalizedOrderId,
+      eventId: data['event_id']?.toString(),
+      eventToken: data['event_token']?.toString(),
+      moduleType: moduleType,
+      type: type,
+      message: isEligible ? 'eligible for aggressive takeover' : 'module not eligible',
+    );
+    return isEligible;
   }
 
 

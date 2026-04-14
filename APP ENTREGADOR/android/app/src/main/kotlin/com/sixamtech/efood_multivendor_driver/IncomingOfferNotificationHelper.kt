@@ -33,6 +33,14 @@ object IncomingOfferNotificationHelper {
         expiresInMs: Long = DEFAULT_EXPIRE_MS,
     ) {
         createNotificationChannel(context)
+        IncomingOfferLog.i(
+            stage = "offer_received",
+            source = IncomingOfferContract.SOURCE_ANDROID_NOTIFICATION,
+            orderId = orderId,
+            moduleType = moduleType,
+            type = type,
+            message = "native notification request received",
+        )
 
         val notificationId = resolveNotificationId(orderId)
         val eventToken = UUID.randomUUID().toString()
@@ -116,6 +124,14 @@ object IncomingOfferNotificationHelper {
             .build()
 
         NotificationManagerCompat.from(context).notify(notificationId, notification)
+        IncomingOfferLog.i(
+            stage = "notification_created",
+            source = IncomingOfferContract.SOURCE_ANDROID_NOTIFICATION,
+            orderId = orderId,
+            eventToken = eventToken,
+            moduleType = moduleType,
+            type = type,
+        )
         maybeLaunchIncomingOfferActivity(
             context = context,
             orderId = orderId,
@@ -165,6 +181,15 @@ object IncomingOfferNotificationHelper {
         force: Boolean = false,
     ) {
         if (!force && !shouldBringActivityToFront(orderId, expiresAt)) {
+            IncomingOfferLog.i(
+                stage = "fallback_triggered",
+                source = IncomingOfferContract.SOURCE_ANDROID_NOTIFICATION,
+                orderId = orderId,
+                eventToken = eventToken,
+                moduleType = moduleType,
+                type = type,
+                message = "takeover launch skipped by shouldBringActivityToFront",
+            )
             return
         }
 
@@ -187,6 +212,14 @@ object IncomingOfferNotificationHelper {
         runCatching {
             context.startActivity(intent)
             markOfferAsDisplayed(orderId, expiresAt)
+            IncomingOfferLog.i(
+                stage = "activity_opened",
+                source = IncomingOfferContract.SOURCE_ANDROID_NOTIFICATION,
+                orderId = orderId,
+                eventToken = eventToken,
+                moduleType = moduleType,
+                type = type,
+            )
         }
     }
 
@@ -212,6 +245,12 @@ object IncomingOfferNotificationHelper {
             return
         }
         displayedOffers.remove(orderId)
+        IncomingOfferLog.i(
+            stage = "cleanup_executed",
+            source = IncomingOfferContract.SOURCE_ANDROID_NOTIFICATION,
+            orderId = orderId,
+            message = "displayed offer tracking removed",
+        )
     }
 
     fun consumeActionToken(eventToken: String?, expiresAt: Long): Boolean {
@@ -222,6 +261,14 @@ object IncomingOfferNotificationHelper {
         consumedOfferTokens.entries.removeIf { (_, value) -> value <= now }
         val tokenExpiry = if (expiresAt > now) expiresAt else now + DEFAULT_EXPIRE_MS
         val previous = consumedOfferTokens.putIfAbsent(eventToken, tokenExpiry)
+        if (previous != null) {
+            IncomingOfferLog.i(
+                stage = "dedupe_discarded",
+                source = IncomingOfferContract.SOURCE_ANDROID_RECEIVER,
+                eventToken = eventToken,
+                message = "duplicate action token",
+            )
+        }
         return previous == null
     }
 

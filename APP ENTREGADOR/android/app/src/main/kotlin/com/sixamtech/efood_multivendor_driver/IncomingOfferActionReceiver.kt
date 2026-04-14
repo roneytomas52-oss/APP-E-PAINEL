@@ -18,6 +18,15 @@ class IncomingOfferActionReceiver : BroadcastReceiver() {
         val expiresAt = payload["expires_at"]?.toString()?.toLongOrNull() ?: 0L
         val now = System.currentTimeMillis()
         val isExpired = expiresAt > 0L && now >= expiresAt
+        IncomingOfferLog.i(
+            stage = "action_received",
+            source = IncomingOfferContract.SOURCE_ANDROID_RECEIVER,
+            orderId = orderId,
+            eventToken = eventToken,
+            moduleType = payload["module_type"]?.toString(),
+            type = type,
+            message = action,
+        )
 
         if (action == IncomingOfferContract.ACTION_OFFER_ACCEPT || action == IncomingOfferContract.ACTION_OFFER_DECLINE) {
             if (!IncomingOfferNotificationHelper.consumeActionToken(eventToken, expiresAt)) {
@@ -101,6 +110,14 @@ class IncomingOfferActionReceiver : BroadcastReceiver() {
         IncomingOfferNotificationHelper.cancelExpiryBroadcast(context, notificationId)
         IncomingOfferNotificationHelper.clearOfferTracking(orderId)
         notificationId?.let { NotificationManagerCompat.from(context).cancel(it) }
+        IncomingOfferLog.i(
+            stage = "cleanup_executed",
+            source = IncomingOfferContract.SOURCE_ANDROID_RECEIVER,
+            orderId = orderId,
+            eventToken = eventToken,
+            moduleType = payload["module_type"]?.toString(),
+            type = type,
+        )
     }
 
     private fun emitBridgeEvent(
