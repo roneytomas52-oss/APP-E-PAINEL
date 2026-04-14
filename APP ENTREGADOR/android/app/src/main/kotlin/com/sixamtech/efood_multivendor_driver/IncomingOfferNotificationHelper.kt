@@ -19,6 +19,7 @@ object IncomingOfferNotificationHelper {
     private const val CHANNEL_DESCRIPTION = "Native incoming-offer actions bridge"
 
     private val displayedOffers = ConcurrentHashMap<String, Long>()
+    private val consumedOfferTokens = ConcurrentHashMap<String, Long>()
 
     fun showIncomingOfferNotification(
         context: Context,
@@ -127,7 +128,7 @@ object IncomingOfferNotificationHelper {
             eventToken = eventToken,
             notificationId = notificationId,
             expiresAt = expiresAt,
-            force = true,
+            force = false,
         )
         scheduleExpiryBroadcast(
             context = context,
@@ -185,7 +186,7 @@ object IncomingOfferNotificationHelper {
 
         runCatching {
             context.startActivity(intent)
-            markOfferAsDisplayed(orderId)
+            markOfferAsDisplayed(orderId, expiresAt)
         }
     }
 
@@ -199,11 +200,45 @@ object IncomingOfferNotificationHelper {
         return existingExpiry < now || existingExpiry < expiresAt
     }
 
-    fun markOfferAsDisplayed(orderId: String?) {
+    fun markOfferAsDisplayed(orderId: String?, expiresAt: Long = System.currentTimeMillis() + DEFAULT_EXPIRE_MS) {
         if (orderId.isNullOrBlank()) {
             return
         }
-        displayedOffers[orderId] = System.currentTimeMillis() + DEFAULT_EXPIRE_MS
+        displayedOffers[orderId] = expiresAt
+    }
+
+    fun clearOfferTracking(orderId: String?) {
+        if (orderId.isNullOrBlank()) {
+            return
+        }
+        displayedOffers.remove(orderId)
+    }
+
+    fun consumeActionToken(eventToken: String?, expiresAt: Long): Boolean {
+        if (eventToken.isNullOrBlank()) {
+            return true
+        }
+        val now = System.currentTimeMillis()
+        consumedOfferTokens.entries.removeIf { (_, value) -> value <= now }
+        val tokenExpiry = if (expiresAt > now) expiresAt else now + DEFAULT_EXPIRE_MS
+        val previous = consumedOfferTokens.putIfAbsent(eventToken, tokenExpiry)
+        return previous == null
+    }
+
+    fun cancelExpiryBroadcast(context: Context, notificationId: Int?) {
+        val validNotificationId = notificationId ?: return
+        val requestCode = validNotificationId + 4
+        val intent = Intent(context, IncomingOfferActionReceiver::class.java).apply {
+            action = IncomingOfferContract.ACTION_OFFER_EXPIRE
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
+        ) ?: return
+        (context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager)?.cancel(pendingIntent)
+        pendingIntent.cancel()
     }
 
     private fun createNotificationChannel(context: Context) {
@@ -326,7 +361,11 @@ object IncomingOfferNotificationHelper {
             expiresAt = expiresAt,
             requestCode = requestCode,
         )
-        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, expiresAt, expireIntent)
+        runCatching {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, expiresAt, expireIntent)
+        }.onFailure {
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, expiresAt, expireIntent)
+        }
     }
 
     private fun Intent.putOfferExtras(

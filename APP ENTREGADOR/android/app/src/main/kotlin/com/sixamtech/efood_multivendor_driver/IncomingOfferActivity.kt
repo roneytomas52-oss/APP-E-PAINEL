@@ -12,6 +12,7 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.core.app.NotificationManagerCompat
 import java.lang.ref.WeakReference
+import java.util.concurrent.atomic.AtomicBoolean
 
 class IncomingOfferActivity : Activity() {
 
@@ -35,6 +36,7 @@ class IncomingOfferActivity : Activity() {
     private var orderType: String? = null
     private var expiresAt: Long = 0L
     private var notificationId: Int? = null
+    private val actionConsumed = AtomicBoolean(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,6 +56,20 @@ class IncomingOfferActivity : Activity() {
         super.onResume()
         if (isExpired()) {
             closeAndEmitExpire(reason = "expired_on_resume")
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (isFinishing) {
+            clearExpiryTimer()
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (isExpired()) {
+            closeAndEmitExpire(reason = "expired_on_stop")
         }
     }
 
@@ -89,6 +105,8 @@ class IncomingOfferActivity : Activity() {
         orderType = incomingIntent.getStringExtra(IncomingOfferContract.EXTRA_ORDER_TYPE)
         notificationId = incomingIntent.getIntExtra(IncomingOfferContract.EXTRA_NOTIFICATION_ID, 0).takeIf { it > 0 }
         expiresAt = incomingIntent.getLongExtra(IncomingOfferContract.EXTRA_EXPIRES_AT, 0L)
+        actionConsumed.set(false)
+        setActionButtonsEnabled(true)
 
         val title = incomingIntent.getStringExtra(IncomingOfferContract.EXTRA_TITLE)?.takeIf { it.isNotBlank() }
             ?: defaultTitle(type, moduleType)
@@ -100,7 +118,7 @@ class IncomingOfferActivity : Activity() {
             return
         }
 
-        IncomingOfferNotificationHelper.markOfferAsDisplayed(orderId)
+        IncomingOfferNotificationHelper.markOfferAsDisplayed(orderId, expiresAt = expiresAt.takeIf { it > 0L } ?: (System.currentTimeMillis() + 45_000L))
         activeActivity.set(WeakReference(this))
 
         offerTypeView.text = "Tipo: ${resolveOfferType()}"
@@ -123,6 +141,10 @@ class IncomingOfferActivity : Activity() {
     }
 
     private fun emitActionAndClose(event: String) {
+        if (!actionConsumed.compareAndSet(false, true)) {
+            return
+        }
+        setActionButtonsEnabled(false)
         IncomingOfferBridge.emitOfferEvent(
             event = event,
             source = IncomingOfferContract.SOURCE_ANDROID_ACTIVITY,
@@ -135,6 +157,11 @@ class IncomingOfferActivity : Activity() {
     }
 
     private fun closeAndEmitExpire(reason: String) {
+        if (!actionConsumed.compareAndSet(false, true)) {
+            finishSafely()
+            return
+        }
+        setActionButtonsEnabled(false)
         IncomingOfferBridge.emitOfferEvent(
             event = IncomingOfferBridge.OFFER_EXPIRED,
             source = IncomingOfferContract.SOURCE_ANDROID_ACTIVITY,
@@ -224,10 +251,20 @@ class IncomingOfferActivity : Activity() {
         expiryRunnable = null
     }
 
+    private fun setActionButtonsEnabled(enabled: Boolean) {
+        acceptButton.isEnabled = enabled
+        declineButton.isEnabled = enabled
+        acceptButton.alpha = if (enabled) 1f else 0.65f
+        declineButton.alpha = if (enabled) 1f else 0.65f
+    }
+
     private fun isExpired(): Boolean = expiresAt > 0L && System.currentTimeMillis() >= expiresAt
 
     private fun finishSafely() {
         clearExpiryTimer()
+        IncomingOfferNotificationHelper.cancelExpiryBroadcast(this, notificationId)
+        notificationId?.let { NotificationManagerCompat.from(this).cancel(it) }
+        IncomingOfferNotificationHelper.clearOfferTracking(orderId)
         if (activeActivity.get()?.get() == this) {
             activeActivity.set(null)
         }

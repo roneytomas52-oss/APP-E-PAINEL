@@ -17,8 +17,10 @@ class IncomingOfferDispatcher {
     IncomingOfferBridgeEvents.offerExpired,
     IncomingOfferBridgeEvents.appReopenedWithOffer,
   };
+  static const Duration _eventDedupeWindow = Duration(minutes: 3);
+  static const int _maxTrackedBridgeEvents = 300;
 
-  final Set<String> _processedEventIds = <String>{};
+  final Map<String, DateTime> _processedEventIds = <String, DateTime>{};
   StreamSubscription<IncomingOfferBridgeEvent>? _bridgeSubscription;
 
   Future<void> initialize() async {
@@ -51,6 +53,7 @@ class IncomingOfferDispatcher {
   }
 
   void dispatchBridgeEvent(IncomingOfferBridgeEvent event) {
+    _cleanupProcessedBridgeEvents();
     if (!_supportedEvents.contains(event.event) || !_markProcessed(event.eventId)) {
       return;
     }
@@ -74,6 +77,7 @@ class IncomingOfferDispatcher {
   }
 
   void dispatchFcmMessage(RemoteMessage message, {required String source}) {
+    _cleanupProcessedBridgeEvents();
     final data = Map<String, dynamic>.from(message.data);
     final String type = data['type']?.toString() ?? '';
     final bool isOfferSignal = type == 'new_order' || type == 'order_request' || type == 'assign';
@@ -95,11 +99,31 @@ class IncomingOfferDispatcher {
   }
 
   bool _markProcessed(String eventId) {
-    if (_processedEventIds.contains(eventId)) {
+    if (_processedEventIds.containsKey(eventId)) {
       return false;
     }
-    _processedEventIds.add(eventId);
+    _processedEventIds[eventId] = DateTime.now();
     return true;
+  }
+
+  void _cleanupProcessedBridgeEvents() {
+    if (_processedEventIds.isEmpty) {
+      return;
+    }
+
+    final DateTime now = DateTime.now();
+    _processedEventIds.removeWhere((_, DateTime timestamp) => now.difference(timestamp) > _eventDedupeWindow);
+
+    if (_processedEventIds.length <= _maxTrackedBridgeEvents) {
+      return;
+    }
+
+    final entries = _processedEventIds.entries.toList()
+      ..sort((a, b) => a.value.compareTo(b.value));
+    final int trimCount = _processedEventIds.length - _maxTrackedBridgeEvents;
+    for (int i = 0; i < trimCount; i++) {
+      _processedEventIds.remove(entries[i].key);
+    }
   }
 
   bool _shouldSuppressFlutterPresentation(IncomingOfferBridgeEvent event) {

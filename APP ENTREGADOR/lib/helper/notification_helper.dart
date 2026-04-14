@@ -131,7 +131,7 @@ class NotificationHelper {
           Get.find<RideController>().setRideGetMessage(true);
         }
 
-        if (!handledIncomingOffer && type != 'assign' && type != 'new_order' && type != 'order_request') {
+        if (!handledIncomingOffer) {
           NotificationHelper.showNotification(message, flutterLocalNotificationsPlugin);
           Get.find<OrderController>().getRunningOrders(1, status: 'all');
           Get.find<OrderController>().getOrderCount(Get.find<OrderController>().orderType);
@@ -293,16 +293,22 @@ class NotificationHelper {
 
   static bool _shouldUseNativeIncomingOffer(Map<String, dynamic> data) {
     final String type = data['type']?.toString() ?? '';
-    if (type != 'new_order' && type != 'order_request' && type != 'assign') {
+    if (type != 'new_order' && type != 'order_request') {
       return false;
     }
 
-    final String moduleType = data['module_type']?.toString() ?? '';
-    if (moduleType.isEmpty) {
-      return true;
+    final dynamic orderId = data['order_id'];
+    final String normalizedOrderId = orderId?.toString().trim() ?? '';
+    if (normalizedOrderId.isEmpty) {
+      return false;
     }
 
-    const Set<String> eligibleModules = <String>{'food', 'grocery', 'parcel', 'pharmacy', 'ride'};
+    final String moduleType = data['module_type']?.toString().trim().toLowerCase() ?? '';
+    if (moduleType.isEmpty) {
+      return false;
+    }
+
+    const Set<String> eligibleModules = <String>{'food', 'grocery', 'parcel', 'pharmacy'};
     return eligibleModules.contains(moduleType);
   }
 
