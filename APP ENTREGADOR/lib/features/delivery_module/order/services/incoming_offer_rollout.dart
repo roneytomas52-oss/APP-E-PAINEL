@@ -3,21 +3,33 @@ import 'dart:developer' as developer;
 class IncomingOfferRollout {
   IncomingOfferRollout._();
 
+  /// Safe by default: native aggressive takeover stays OFF unless explicitly enabled.
   static const bool _defaultAggressiveTakeover = bool.fromEnvironment(
     'INCOMING_OFFER_AGGRESSIVE_TAKEOVER',
-    defaultValue: true,
+    defaultValue: false,
   );
 
   static bool? _overrideAggressiveTakeover;
 
   static bool get aggressiveTakeoverEnabled => _overrideAggressiveTakeover ?? _defaultAggressiveTakeover;
 
+  static bool get hasDebugOverride => _overrideAggressiveTakeover != null;
+
   static void setAggressiveTakeoverForDebug(bool enabled) {
     _overrideAggressiveTakeover = enabled;
     logIncomingOffer(
       'feature_flag_updated',
       message: 'Aggressive takeover override changed',
-      extra: <String, Object?>{'enabled': enabled},
+      extra: <String, Object?>{'enabled': enabled, 'override_active': true},
+    );
+  }
+
+  static void clearAggressiveTakeoverDebugOverride() {
+    _overrideAggressiveTakeover = null;
+    logIncomingOffer(
+      'feature_flag_updated',
+      message: 'Aggressive takeover override cleared',
+      extra: <String, Object?>{'override_active': false, 'enabled': _defaultAggressiveTakeover},
     );
   }
 }
