@@ -14,6 +14,12 @@ class AuthRepository implements AuthRepositoryInterface {
   final SharedPreferences sharedPreferences;
   AuthRepository({required this.apiClient, required this.sharedPreferences});
 
+  /// API devolve `zone_{id}_delivery_man_push`, mas o Laravel envia push para `zone_{id}_delivery_man`.
+  static String normalizeZoneFcmTopic(String? topic) {
+    if (topic == null || topic.isEmpty) return '';
+    return topic.endsWith('_push') ? topic.substring(0, topic.length - 5) : topic;
+  }
+
   @override
   Future<Response> login(String phone, String password, String type) async {
     return await apiClient.postData(AppConstants.loginUri, {"phone": phone, "password": password, "type": type}, handleError: false);
@@ -57,7 +63,10 @@ class AuthRepository implements AuthRepositoryInterface {
       }else{
         FirebaseMessaging.instance.subscribeToTopic(AppConstants.topicRider);
       }
-      FirebaseMessaging.instance.subscribeToTopic(sharedPreferences.getString(AppConstants.zoneTopic)!);
+      final String zone = normalizeZoneFcmTopic(sharedPreferences.getString(AppConstants.zoneTopic));
+      if (zone.isNotEmpty) {
+        FirebaseMessaging.instance.subscribeToTopic(zone);
+      }
       FirebaseMessaging.instance.subscribeToTopic(sharedPreferences.getString(AppConstants.vehicleWiseTopic)!);
     }
     return await apiClient.postData(AppConstants.tokenUri, {"_method": "put", "token": getUserToken(), "fcm_token": deviceToken}, handleError: false);
@@ -76,7 +85,7 @@ class AuthRepository implements AuthRepositoryInterface {
   Future<bool> saveUserToken(String token, String zoneTopic, String vehicleWiseTopic) async {
     apiClient.token = token;
     apiClient.updateHeader(token, sharedPreferences.getString(AppConstants.languageCode));
-    sharedPreferences.setString(AppConstants.zoneTopic, zoneTopic);
+    sharedPreferences.setString(AppConstants.zoneTopic, normalizeZoneFcmTopic(zoneTopic));
     sharedPreferences.setString(AppConstants.vehicleWiseTopic, vehicleWiseTopic);
 
     return await sharedPreferences.setString(AppConstants.token, token);
@@ -102,7 +111,10 @@ class AuthRepository implements AuthRepositoryInterface {
         }else{
           await FirebaseMessaging.instance.unsubscribeFromTopic(AppConstants.topicRider);
         }
-        FirebaseMessaging.instance.unsubscribeFromTopic(sharedPreferences.getString(AppConstants.zoneTopic)!);
+        final String zone = normalizeZoneFcmTopic(sharedPreferences.getString(AppConstants.zoneTopic));
+        if (zone.isNotEmpty) {
+          FirebaseMessaging.instance.unsubscribeFromTopic(zone);
+        }
         FirebaseMessaging.instance.unsubscribeFromTopic(sharedPreferences.getString(AppConstants.vehicleWiseTopic)!);
       }catch(e){
         if (kDebugMode) {
@@ -164,7 +176,10 @@ class AuthRepository implements AuthRepositoryInterface {
         apiClient.postData(AppConstants.tokenUri, {"_method": "put", "token": getUserToken()}, handleError: false);
         FirebaseMessaging.instance.unsubscribeFromTopic(AppConstants.topicDeliveryman);
         FirebaseMessaging.instance.unsubscribeFromTopic(AppConstants.topicRider);
-        FirebaseMessaging.instance.unsubscribeFromTopic(sharedPreferences.getString(AppConstants.zoneTopic)!);
+        final String zone = normalizeZoneFcmTopic(sharedPreferences.getString(AppConstants.zoneTopic));
+        if (zone.isNotEmpty) {
+          FirebaseMessaging.instance.unsubscribeFromTopic(zone);
+        }
         FirebaseMessaging.instance.unsubscribeFromTopic(sharedPreferences.getString(AppConstants.vehicleWiseTopic)!);
       }
     }
