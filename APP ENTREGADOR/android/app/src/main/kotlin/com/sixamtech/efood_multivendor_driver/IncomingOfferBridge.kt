@@ -189,6 +189,10 @@ class IncomingOfferBridge(
             notificationType: String?,
             payload: Map<String, Any?>,
         ): Map<String, Any?> {
+            val payloadToken = payload["event_token"]?.toString()?.takeIf { it.isNotBlank() }
+            val stableEventId = payloadToken?.let { token ->
+                "${source}_${event}_${orderId ?: "no_order"}_$token"
+            } ?: UUID.randomUUID().toString()
             return mapOf(
                 "version" to BRIDGE_VERSION,
                 "event" to event,
@@ -197,7 +201,7 @@ class IncomingOfferBridge(
                 "order_id" to orderId,
                 "notification_type" to notificationType,
                 "timestamp" to System.currentTimeMillis(),
-                "event_id" to UUID.randomUUID().toString(),
+                "event_id" to stableEventId,
                 "payload" to payload,
             )
         }

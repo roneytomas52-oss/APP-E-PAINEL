@@ -16,6 +16,15 @@ class IncomingOfferActionReceiver : BroadcastReceiver() {
         val notificationId = payload["notification_id"]?.toString()?.toIntOrNull()
         val eventToken = payload["event_token"]?.toString() ?: ""
         val expiresAt = payload["expires_at"]?.toString()?.toLongOrNull() ?: 0L
+        val now = System.currentTimeMillis()
+        val isExpired = expiresAt > 0L && now >= expiresAt
+
+        if (action == IncomingOfferContract.ACTION_OFFER_ACCEPT || action == IncomingOfferContract.ACTION_OFFER_DECLINE) {
+            if (!IncomingOfferNotificationHelper.consumeActionToken(eventToken, expiresAt)) {
+                notificationId?.let { NotificationManagerCompat.from(context).cancel(it) }
+                return
+            }
+        }
 
         when (action) {
             IncomingOfferContract.ACTION_OFFER_OPEN -> {
@@ -35,24 +44,46 @@ class IncomingOfferActionReceiver : BroadcastReceiver() {
                 )
             }
             IncomingOfferContract.ACTION_OFFER_ACCEPT -> {
-                emitBridgeEvent(
-                    event = IncomingOfferBridge.OFFER_ACCEPT_TAPPED,
-                    payload = payload,
-                    orderId = orderId,
-                    type = type,
-                    notificationType = notificationType,
-                )
-                IncomingOfferActivity.closeIfMatching(orderId)
+                if (isExpired) {
+                    emitBridgeEvent(
+                        event = IncomingOfferBridge.OFFER_EXPIRED,
+                        payload = payload,
+                        orderId = orderId,
+                        type = type,
+                        notificationType = notificationType,
+                    )
+                    IncomingOfferActivity.closeIfMatching(orderId)
+                } else {
+                    emitBridgeEvent(
+                        event = IncomingOfferBridge.OFFER_ACCEPT_TAPPED,
+                        payload = payload,
+                        orderId = orderId,
+                        type = type,
+                        notificationType = notificationType,
+                    )
+                    IncomingOfferActivity.closeIfMatching(orderId)
+                }
             }
             IncomingOfferContract.ACTION_OFFER_DECLINE -> {
-                emitBridgeEvent(
-                    event = IncomingOfferBridge.OFFER_DECLINE_TAPPED,
-                    payload = payload,
-                    orderId = orderId,
-                    type = type,
-                    notificationType = notificationType,
-                )
-                IncomingOfferActivity.closeIfMatching(orderId)
+                if (isExpired) {
+                    emitBridgeEvent(
+                        event = IncomingOfferBridge.OFFER_EXPIRED,
+                        payload = payload,
+                        orderId = orderId,
+                        type = type,
+                        notificationType = notificationType,
+                    )
+                    IncomingOfferActivity.closeIfMatching(orderId)
+                } else {
+                    emitBridgeEvent(
+                        event = IncomingOfferBridge.OFFER_DECLINE_TAPPED,
+                        payload = payload,
+                        orderId = orderId,
+                        type = type,
+                        notificationType = notificationType,
+                    )
+                    IncomingOfferActivity.closeIfMatching(orderId)
+                }
             }
             IncomingOfferContract.ACTION_OFFER_EXPIRE -> {
                 emitBridgeEvent(
@@ -67,6 +98,8 @@ class IncomingOfferActionReceiver : BroadcastReceiver() {
             else -> return
         }
 
+        IncomingOfferNotificationHelper.cancelExpiryBroadcast(context, notificationId)
+        IncomingOfferNotificationHelper.clearOfferTracking(orderId)
         notificationId?.let { NotificationManagerCompat.from(context).cancel(it) }
     }
 
