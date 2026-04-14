@@ -6,7 +6,8 @@ import 'package:sixam_mart_delivery/features/profile/controllers/profile_control
 import 'package:sixam_mart_delivery/features/ride_module/ride_order/screens/pending_ride_list_screen.dart';
 import 'package:sixam_mart_delivery/features/ride_module/ride_order/screens/ride_order_screen.dart';
 import 'package:sixam_mart_delivery/helper/route_helper.dart';
-import 'package:sixam_mart_delivery/helper/incoming_offer_dispatcher.dart';
+import 'package:sixam_mart_delivery/features/delivery_module/order/services/incoming_offer_dispatcher.dart';
+import 'package:sixam_mart_delivery/helper/incoming_offer_dispatcher.dart' show IncomingOfferPresentation;
 import 'package:sixam_mart_delivery/util/app_constants.dart';
 import 'package:sixam_mart_delivery/util/dimensions.dart';
 import 'package:sixam_mart_delivery/common/widgets/custom_alert_dialog_widget.dart';
