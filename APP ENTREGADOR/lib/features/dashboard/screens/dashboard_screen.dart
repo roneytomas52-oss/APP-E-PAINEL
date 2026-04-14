@@ -1,14 +1,12 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:sixam_mart_delivery/features/auth/controllers/auth_controller.dart';
 import 'package:sixam_mart_delivery/features/delivery_module/order/controllers/order_controller.dart';
 import 'package:sixam_mart_delivery/features/disbursement/helper/disbursement_helper.dart';
 import 'package:sixam_mart_delivery/features/profile/controllers/profile_controller.dart';
 import 'package:sixam_mart_delivery/features/ride_module/ride_order/screens/pending_ride_list_screen.dart';
 import 'package:sixam_mart_delivery/features/ride_module/ride_order/screens/ride_order_screen.dart';
-import 'package:sixam_mart_delivery/helper/notification_helper.dart';
 import 'package:sixam_mart_delivery/helper/route_helper.dart';
-import 'package:sixam_mart_delivery/main.dart';
+import 'package:sixam_mart_delivery/helper/incoming_offer_dispatcher.dart';
 import 'package:sixam_mart_delivery/util/app_constants.dart';
 import 'package:sixam_mart_delivery/util/dimensions.dart';
 import 'package:sixam_mart_delivery/common/widgets/custom_alert_dialog_widget.dart';
@@ -18,7 +16,6 @@ import 'package:sixam_mart_delivery/features/home/screens/home_screen.dart';
 import 'package:sixam_mart_delivery/features/profile/screens/profile_screen.dart';
 import 'package:sixam_mart_delivery/features/delivery_module/order/screens/order_request_screen.dart';
 import 'package:sixam_mart_delivery/features/delivery_module/order/screens/order_screen.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -39,7 +36,6 @@ class DashboardScreenState extends State<DashboardScreen> {
   int _pageIndex = 0;
   late List<Widget> _screens;
   final _channel = const MethodChannel('com.sixamtech/app_retain');
-  late StreamSubscription _stream;
   DisbursementHelper disbursementHelper = DisbursementHelper();
   bool _canExit = false;
   bool isRideActive = AppConstants.appMode == AppMode.ride;
@@ -64,31 +60,27 @@ class DashboardScreenState extends State<DashboardScreen> {
     showDisbursementWarningMessage();
     Get.find<OrderController>().getLatestOrders();
     
-    _stream = FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-
-      String? type = message.data['body_loc_key'] ?? message.data['type'];
-      String? orderID = message.data['title_loc_key'] ?? message.data['order_id'];
-      bool isParcel = (message.data['order_type'] == 'parcel_order');
-      bool isPrescription = (message.data['order_type'] == 'prescription');
-      if(type != 'assign' && type != 'new_order' && type != 'message' && type != 'order_request' && type != 'order_status') {
-        NotificationHelper.showNotification(message, flutterLocalNotificationsPlugin);
+    IncomingOfferDispatcher.instance.registerOfferPresenter((IncomingOfferPresentation presentation) {
+      if (!mounted || Get.isDialogOpen == true) {
+        return;
       }
-      if(type == 'new_order' || type == 'order_request') {
-        Get.find<OrderController>().getRunningOrders(Get.find<OrderController>().offset, status: 'all');
-        Get.find<OrderController>().getOrderCount(Get.find<OrderController>().orderType);
-        Get.find<OrderController>().getLatestOrders();
-        Get.dialog(NewRequestDialogWidget(isRequest: true, onTap: () => _navigateRequestPage(), orderId: int.parse(message.data['order_id'].toString()), hideItemCount: isParcel || isPrescription));
-      }else if(type == 'assign' && orderID != null && orderID.isNotEmpty) {
-        Get.find<OrderController>().getRunningOrders(Get.find<OrderController>().offset, status: 'all');
-        Get.find<OrderController>().getOrderCount(Get.find<OrderController>().orderType);
-        Get.find<OrderController>().getLatestOrders();
-        Get.dialog(NewRequestDialogWidget(isRequest: false, orderId: int.parse(message.data['order_id'].toString()), hideItemCount: isParcel || isPrescription, onTap: () {
-          Get.offAllNamed(RouteHelper.getOrderDetailsRoute(int.parse(orderID), fromNotification: true));
-        }));
-      }else if(type == 'block') {
-        Get.find<AuthController>().clearSharedData();
-        Get.find<ProfileController>().stopLocationRecord();
-        Get.offAllNamed(RouteHelper.getSignInRoute());
+
+      if (presentation.isRequest) {
+        Get.dialog(NewRequestDialogWidget(
+          isRequest: true,
+          onTap: _navigateRequestPage,
+          orderId: presentation.orderId,
+          hideItemCount: presentation.hideItemCount,
+        ));
+      } else {
+        Get.dialog(NewRequestDialogWidget(
+          isRequest: false,
+          orderId: presentation.orderId,
+          hideItemCount: presentation.hideItemCount,
+          onTap: () {
+            Get.offAllNamed(RouteHelper.getOrderDetailsRoute(presentation.orderId, fromNotification: true));
+          },
+        ));
       }
     });
 
@@ -110,7 +102,7 @@ class DashboardScreenState extends State<DashboardScreen> {
   void dispose() {
     super.dispose();
 
-    _stream.cancel();
+    IncomingOfferDispatcher.instance.unregisterOfferPresenter();
   }
 
   @override
