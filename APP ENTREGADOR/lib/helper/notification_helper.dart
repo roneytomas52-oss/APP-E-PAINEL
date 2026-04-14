@@ -17,6 +17,7 @@ import 'package:sixam_mart_delivery/features/notification/domain/models/notifica
 import 'package:sixam_mart_delivery/features/ride_module/ride_order/screens/pending_ride_list_screen.dart';
 import 'package:sixam_mart_delivery/features/splash/controllers/splash_controller.dart';
 import 'package:sixam_mart_delivery/helper/custom_print_helper.dart';
+import 'package:sixam_mart_delivery/helper/incoming_offer_dispatcher.dart';
 import 'package:sixam_mart_delivery/helper/route_helper.dart';
 import 'package:sixam_mart_delivery/util/app_constants.dart';
 import 'package:get/get.dart';
@@ -77,6 +78,10 @@ class NotificationHelper {
       IncomingOfferDispatcher.instance.dispatchFcmMessage(message, source: 'fcm_foreground');
 
       bool pusherDisconnected = Get.find<SplashController>().pusherConnectionStatus == null || Get.find<SplashController>().pusherConnectionStatus == 'Disconnected' || (Get.find<SplashController>().configModel?.webSocketStatus == false);
+      final bool handledIncomingOffer = IncomingOfferDispatcher.instance.handleRemotePayload(
+        message.data,
+        source: IncomingOfferSource.fcmForeground,
+      );
 
       if(message.data['type'] == 'message' && Get.currentRoute.startsWith(RouteHelper.chatScreen)){
         if(Get.find<AuthController>().isLoggedIn()) {
@@ -111,7 +116,7 @@ class NotificationHelper {
           Get.find<RideController>().setRideGetMessage(true);
         }
 
-        if (type != 'assign' && type != 'new_order' && type != 'order_request') {
+        if (!handledIncomingOffer && type != 'assign' && type != 'new_order' && type != 'order_request') {
           NotificationHelper.showNotification(message, flutterLocalNotificationsPlugin);
           Get.find<OrderController>().getRunningOrders(1, status: 'all');
           Get.find<OrderController>().getOrderCount(Get.find<OrderController>().orderType);
@@ -237,7 +242,11 @@ class NotificationHelper {
       if (kDebugMode) {
         print("onOpenApp message type:${message.data['type']}");
       }
-      IncomingOfferDispatcher.instance.dispatchFcmMessage(message, source: 'fcm_opened');
+      IncomingOfferDispatcher.instance.handleRemotePayload(
+        message.data,
+        source: IncomingOfferSource.fcmOpenedApp,
+        triggerPresentation: false,
+      );
 
       try{
         if(message.data.isNotEmpty){
