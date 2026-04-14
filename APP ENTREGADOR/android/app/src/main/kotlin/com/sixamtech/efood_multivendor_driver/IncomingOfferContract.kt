@@ -13,7 +13,11 @@ object IncomingOfferContract {
     const val EXTRA_BODY = "extra_body"
     const val EXTRA_EVENT_TOKEN = "extra_event_token"
     const val EXTRA_NOTIFICATION_ID = "extra_notification_id"
+    const val EXTRA_MODULE_TYPE = "extra_module_type"
+    const val EXTRA_ORDER_TYPE = "extra_order_type"
+    const val EXTRA_EXPIRES_AT = "extra_expires_at"
 
     const val SOURCE_ANDROID_RECEIVER = "android_receiver"
     const val SOURCE_ANDROID_NOTIFICATION = "android_notification"
+    const val SOURCE_ANDROID_ACTIVITY = "android_activity"
 }

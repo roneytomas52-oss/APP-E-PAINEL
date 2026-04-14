@@ -14,16 +14,24 @@ class IncomingOfferActionReceiver : BroadcastReceiver() {
         val type = payload["type"]?.toString()
         val notificationType = payload["notification_type"]?.toString()
         val notificationId = payload["notification_id"]?.toString()?.toIntOrNull()
+        val eventToken = payload["event_token"]?.toString() ?: ""
+        val expiresAt = payload["expires_at"]?.toString()?.toLongOrNull() ?: 0L
 
         when (action) {
             IncomingOfferContract.ACTION_OFFER_OPEN -> {
-                openApp(context, payload)
-                emitBridgeEvent(
-                    event = IncomingOfferBridge.OFFER_OPENED,
-                    payload = payload,
+                IncomingOfferNotificationHelper.maybeLaunchIncomingOfferActivity(
+                    context = context,
                     orderId = orderId,
                     type = type,
                     notificationType = notificationType,
+                    title = payload["title"]?.toString(),
+                    body = payload["body"]?.toString(),
+                    moduleType = payload["module_type"]?.toString(),
+                    orderType = payload["order_type"]?.toString(),
+                    eventToken = eventToken,
+                    notificationId = notificationId ?: IncomingOfferNotificationHelper.resolveNotificationId(orderId),
+                    expiresAt = expiresAt,
+                    force = true,
                 )
             }
             IncomingOfferContract.ACTION_OFFER_ACCEPT -> {
@@ -34,6 +42,7 @@ class IncomingOfferActionReceiver : BroadcastReceiver() {
                     type = type,
                     notificationType = notificationType,
                 )
+                IncomingOfferActivity.closeIfMatching(orderId)
             }
             IncomingOfferContract.ACTION_OFFER_DECLINE -> {
                 emitBridgeEvent(
@@ -43,6 +52,7 @@ class IncomingOfferActionReceiver : BroadcastReceiver() {
                     type = type,
                     notificationType = notificationType,
                 )
+                IncomingOfferActivity.closeIfMatching(orderId)
             }
             IncomingOfferContract.ACTION_OFFER_EXPIRE -> {
                 emitBridgeEvent(
@@ -52,22 +62,12 @@ class IncomingOfferActionReceiver : BroadcastReceiver() {
                     type = type,
                     notificationType = notificationType,
                 )
+                IncomingOfferActivity.closeIfMatching(orderId)
             }
             else -> return
         }
 
         notificationId?.let { NotificationManagerCompat.from(context).cancel(it) }
-    }
-
-    private fun openApp(context: Context, payload: Map<String, Any?>) {
-        val launchIntent = Intent(context, MainActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            putExtra("order_id", payload["order_id"]?.toString())
-            putExtra("type", payload["type"]?.toString())
-            putExtra("notification_type", payload["notification_type"]?.toString())
-            putExtra("offer_event_token", payload["event_token"]?.toString())
-        }
-        context.startActivity(launchIntent)
     }
 
     private fun emitBridgeEvent(
@@ -94,8 +94,11 @@ class IncomingOfferActionReceiver : BroadcastReceiver() {
             "notification_type" to intent.getStringExtra(IncomingOfferContract.EXTRA_NOTIFICATION_TYPE),
             "title" to intent.getStringExtra(IncomingOfferContract.EXTRA_TITLE),
             "body" to intent.getStringExtra(IncomingOfferContract.EXTRA_BODY),
+            "module_type" to intent.getStringExtra(IncomingOfferContract.EXTRA_MODULE_TYPE),
+            "order_type" to intent.getStringExtra(IncomingOfferContract.EXTRA_ORDER_TYPE),
             "event_token" to intent.getStringExtra(IncomingOfferContract.EXTRA_EVENT_TOKEN),
             "notification_id" to intent.getIntExtra(IncomingOfferContract.EXTRA_NOTIFICATION_ID, 0),
+            "expires_at" to intent.getLongExtra(IncomingOfferContract.EXTRA_EXPIRES_AT, 0L),
             "native_action" to intent.action,
         )
     }

@@ -42,6 +42,8 @@ class IncomingOfferBridge(
                     notificationType = argumentMap["notification_type"]?.toString(),
                     title = argumentMap["title"]?.toString(),
                     body = argumentMap["body"]?.toString(),
+                    moduleType = argumentMap["module_type"]?.toString(),
+                    orderType = argumentMap["order_type"]?.toString(),
                     expiresInMs = (argumentMap["expires_in_ms"] as? Number)?.toLong() ?: 45_000L,
                 )
                 result.success(true)

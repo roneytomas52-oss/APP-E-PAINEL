@@ -48,6 +48,8 @@ class IncomingOfferBridge {
     String? notificationType,
     String? title,
     String? body,
+    String? moduleType,
+    String? orderType,
     int expiresInMs = 45000,
   }) async {
     if (!GetPlatform.isAndroid) {
@@ -60,6 +62,8 @@ class IncomingOfferBridge {
       'notification_type': notificationType,
       'title': title,
       'body': body,
+      'module_type': moduleType,
+      'order_type': orderType,
       'expires_in_ms': expiresInMs,
     });
   }
