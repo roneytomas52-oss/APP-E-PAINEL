@@ -10,6 +10,7 @@ import 'package:sixam_mart_delivery/common/widgets/level_congratulations_dialog_
 import 'package:sixam_mart_delivery/features/auth/controllers/auth_controller.dart';
 import 'package:sixam_mart_delivery/features/chat/controllers/chat_controller.dart';
 import 'package:sixam_mart_delivery/features/dashboard/screens/dashboard_screen.dart';
+import 'package:sixam_mart_delivery/features/delivery_module/order/services/incoming_offer_dispatcher.dart';
 import 'package:sixam_mart_delivery/features/notification/controllers/notification_controller.dart';
 import 'package:sixam_mart_delivery/features/delivery_module/order/controllers/order_controller.dart';
 import 'package:sixam_mart_delivery/features/notification/domain/models/notification_body_model.dart';
@@ -73,6 +74,8 @@ class NotificationHelper {
         print("onMessage message type:${message.data['type']}");
         print("onMessage message:${message.data}");
       }
+
+      IncomingOfferDispatcher.instance.dispatchFcmMessage(message, source: 'fcm_foreground');
 
       bool pusherDisconnected = Get.find<SplashController>().pusherConnectionStatus == null || Get.find<SplashController>().pusherConnectionStatus == 'Disconnected' || (Get.find<SplashController>().configModel?.webSocketStatus == false);
       final bool handledIncomingOffer = IncomingOfferDispatcher.instance.handleRemotePayload(
