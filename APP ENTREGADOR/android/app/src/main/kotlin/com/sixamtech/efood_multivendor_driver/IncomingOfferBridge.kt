@@ -7,9 +7,11 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
 
 class IncomingOfferBridge(
     messenger: BinaryMessenger,
+    private val appContext: android.content.Context,
 ) : MethodChannel.MethodCallHandler, EventChannel.StreamHandler {
 
     private val commandChannel = MethodChannel(messenger, COMMAND_CHANNEL)
@@ -17,6 +19,7 @@ class IncomingOfferBridge(
     private var eventSink: EventChannel.EventSink? = null
 
     init {
+        activeBridge.set(this)
         commandChannel.setMethodCallHandler(this)
         eventChannel.setStreamHandler(this)
     }
@@ -29,6 +32,19 @@ class IncomingOfferBridge(
             }
             "getPendingEvents" -> {
                 result.success(drainPendingEvents())
+            }
+            "showIncomingOfferNotification" -> {
+                val argumentMap = call.arguments as? Map<*, *> ?: emptyMap<String, Any?>()
+                IncomingOfferNotificationHelper.showIncomingOfferNotification(
+                    context = appContext,
+                    orderId = argumentMap["order_id"]?.toString(),
+                    type = argumentMap["type"]?.toString(),
+                    notificationType = argumentMap["notification_type"]?.toString(),
+                    title = argumentMap["title"]?.toString(),
+                    body = argumentMap["body"]?.toString(),
+                    expiresInMs = (argumentMap["expires_in_ms"] as? Number)?.toLong() ?: 45_000L,
+                )
+                result.success(true)
             }
             else -> result.notImplemented()
         }
@@ -111,26 +127,6 @@ class IncomingOfferBridge(
         }
     }
 
-    private fun buildEvent(
-        event: String,
-        source: String,
-        type: String,
-        orderId: String?,
-        notificationType: String?,
-        payload: Map<String, Any?>,
-    ): Map<String, Any?> {
-        return mapOf(
-            "version" to BRIDGE_VERSION,
-            "event" to event,
-            "source" to source,
-            "type" to type,
-            "order_id" to orderId,
-            "notification_type" to notificationType,
-            "timestamp" to System.currentTimeMillis(),
-            "event_id" to UUID.randomUUID().toString(),
-            "payload" to payload,
-        )
-    }
 
     private fun bundleToMap(bundle: Bundle): Map<String, Any?> {
         val map = mutableMapOf<String, Any?>()
@@ -152,5 +148,56 @@ class IncomingOfferBridge(
         const val APP_REOPENED_WITH_OFFER = "app_reopened_with_offer"
 
         private val pendingEvents = mutableListOf<Map<String, Any?>>()
+        private val activeBridge = AtomicReference<IncomingOfferBridge?>(null)
+
+        @JvmStatic
+        fun emitOfferEvent(
+            event: String,
+            source: String,
+            type: String?,
+            orderId: String?,
+            notificationType: String?,
+            payload: Map<String, Any?> = emptyMap(),
+        ) {
+            val bridge = activeBridge.get()
+            if (bridge != null) {
+                bridge.emitOfferEvent(event, source, type, orderId, notificationType, payload)
+                return
+            }
+
+            synchronized(pendingEvents) {
+                pendingEvents.add(
+                    buildEvent(
+                        event = event,
+                        source = source,
+                        type = type ?: "unknown",
+                        orderId = orderId,
+                        notificationType = notificationType,
+                        payload = payload,
+                    ),
+                )
+            }
+        }
+
+        private fun buildEvent(
+            event: String,
+            source: String,
+            type: String,
+            orderId: String?,
+            notificationType: String?,
+            payload: Map<String, Any?>,
+        ): Map<String, Any?> {
+            return mapOf(
+                "version" to BRIDGE_VERSION,
+                "event" to event,
+                "source" to source,
+                "type" to type,
+                "order_id" to orderId,
+                "notification_type" to notificationType,
+                "timestamp" to System.currentTimeMillis(),
+                "event_id" to UUID.randomUUID().toString(),
+                "payload" to payload,
+            )
+        }
     }
 }

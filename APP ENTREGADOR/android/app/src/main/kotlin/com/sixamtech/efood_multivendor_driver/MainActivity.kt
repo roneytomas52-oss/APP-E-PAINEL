@@ -23,7 +23,7 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
-        incomingOfferBridge = IncomingOfferBridge(flutterEngine.dartExecutor.binaryMessenger)
+        incomingOfferBridge = IncomingOfferBridge(flutterEngine.dartExecutor.binaryMessenger, applicationContext)
         incomingOfferBridge?.handleIntent(intent, source = "activity_launch")
     }
 

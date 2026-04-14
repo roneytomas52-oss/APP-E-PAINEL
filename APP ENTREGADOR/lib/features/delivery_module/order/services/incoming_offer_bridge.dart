@@ -41,6 +41,29 @@ class IncomingOfferBridge {
     _initialized = true;
   }
 
+
+  Future<void> showNativeIncomingOfferNotification({
+    String? orderId,
+    String? type,
+    String? notificationType,
+    String? title,
+    String? body,
+    int expiresInMs = 45000,
+  }) async {
+    if (!GetPlatform.isAndroid) {
+      return;
+    }
+
+    await _commandChannel.invokeMethod('showIncomingOfferNotification', {
+      'order_id': orderId,
+      'type': type,
+      'notification_type': notificationType,
+      'title': title,
+      'body': body,
+      'expires_in_ms': expiresInMs,
+    });
+  }
+
   void _emitDynamicEvent(dynamic event) {
     if (event is Map) {
       _eventsController.add(IncomingOfferBridgeEvent.fromMap(event));

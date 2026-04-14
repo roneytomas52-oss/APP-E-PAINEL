@@ -17,7 +17,7 @@ import 'package:sixam_mart_delivery/features/notification/domain/models/notifica
 import 'package:sixam_mart_delivery/features/ride_module/ride_order/screens/pending_ride_list_screen.dart';
 import 'package:sixam_mart_delivery/features/splash/controllers/splash_controller.dart';
 import 'package:sixam_mart_delivery/helper/custom_print_helper.dart';
-import 'package:sixam_mart_delivery/helper/incoming_offer_dispatcher.dart';
+import 'package:sixam_mart_delivery/helper/incoming_offer_dispatcher.dart' show IncomingOfferSource;
 import 'package:sixam_mart_delivery/helper/route_helper.dart';
 import 'package:sixam_mart_delivery/util/app_constants.dart';
 import 'package:get/get.dart';
