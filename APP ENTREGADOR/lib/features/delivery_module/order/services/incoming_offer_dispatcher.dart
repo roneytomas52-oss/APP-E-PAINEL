@@ -58,7 +58,10 @@ class IncomingOfferDispatcher {
     switch (event.event) {
       case IncomingOfferBridgeEvents.offerOpened:
       case IncomingOfferBridgeEvents.appReopenedWithOffer:
-        _dispatchToOfferFlow(event, triggerPresentation: true);
+        _dispatchToOfferFlow(
+          event,
+          triggerPresentation: !_shouldSuppressFlutterPresentation(event),
+        );
         break;
       case IncomingOfferBridgeEvents.offerAcceptTapped:
       case IncomingOfferBridgeEvents.offerDeclineTapped:
@@ -97,6 +100,11 @@ class IncomingOfferDispatcher {
     }
     _processedEventIds.add(eventId);
     return true;
+  }
+
+  bool _shouldSuppressFlutterPresentation(IncomingOfferBridgeEvent event) {
+    return event.source == 'android_activity' ||
+        event.payload['native_takeover']?.toString() == 'true';
   }
 
   void _dispatchToOfferFlow(IncomingOfferBridgeEvent event, {required bool triggerPresentation}) {

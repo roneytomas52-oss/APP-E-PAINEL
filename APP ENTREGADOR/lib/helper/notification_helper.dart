@@ -11,6 +11,7 @@ import 'package:sixam_mart_delivery/features/auth/controllers/auth_controller.da
 import 'package:sixam_mart_delivery/features/chat/controllers/chat_controller.dart';
 import 'package:sixam_mart_delivery/features/dashboard/screens/dashboard_screen.dart';
 import 'package:sixam_mart_delivery/features/delivery_module/order/services/incoming_offer_dispatcher.dart';
+import 'package:sixam_mart_delivery/features/delivery_module/order/services/incoming_offer_bridge.dart';
 import 'package:sixam_mart_delivery/features/notification/controllers/notification_controller.dart';
 import 'package:sixam_mart_delivery/features/delivery_module/order/controllers/order_controller.dart';
 import 'package:sixam_mart_delivery/features/notification/domain/models/notification_body_model.dart';
@@ -78,9 +79,23 @@ class NotificationHelper {
       IncomingOfferDispatcher.instance.dispatchFcmMessage(message, source: 'fcm_foreground');
 
       bool pusherDisconnected = Get.find<SplashController>().pusherConnectionStatus == null || Get.find<SplashController>().pusherConnectionStatus == 'Disconnected' || (Get.find<SplashController>().configModel?.webSocketStatus == false);
+      final bool shouldUseNativeTakeover = _shouldUseNativeIncomingOffer(message.data);
+      if (shouldUseNativeTakeover) {
+        IncomingOfferBridge.instance.showNativeIncomingOfferNotification(
+          orderId: message.data['order_id']?.toString(),
+          type: message.data['type']?.toString(),
+          notificationType: message.data['notification_type']?.toString(),
+          title: message.data['title']?.toString() ?? message.notification?.title,
+          body: message.data['body']?.toString() ?? message.notification?.body,
+          moduleType: message.data['module_type']?.toString(),
+          orderType: message.data['order_type']?.toString(),
+        );
+      }
+
       final bool handledIncomingOffer = IncomingOfferDispatcher.instance.handleRemotePayload(
         message.data,
         source: IncomingOfferSource.fcmForeground,
+        triggerPresentation: !shouldUseNativeTakeover,
       );
 
       if(message.data['type'] == 'message' && Get.currentRoute.startsWith(RouteHelper.chatScreen)){
@@ -273,6 +288,22 @@ class NotificationHelper {
         }
       }catch (_) {}
     });
+  }
+
+
+  static bool _shouldUseNativeIncomingOffer(Map<String, dynamic> data) {
+    final String type = data['type']?.toString() ?? '';
+    if (type != 'new_order' && type != 'order_request' && type != 'assign') {
+      return false;
+    }
+
+    final String moduleType = data['module_type']?.toString() ?? '';
+    if (moduleType.isEmpty) {
+      return true;
+    }
+
+    const Set<String> eligibleModules = <String>{'food', 'grocery', 'parcel', 'pharmacy', 'ride'};
+    return eligibleModules.contains(moduleType);
   }
 
 

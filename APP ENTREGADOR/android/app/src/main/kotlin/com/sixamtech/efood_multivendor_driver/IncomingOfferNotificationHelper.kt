@@ -10,12 +10,15 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 object IncomingOfferNotificationHelper {
 
     private const val CHANNEL_ID = "incoming_offer_events"
     private const val CHANNEL_NAME = "Incoming offers"
     private const val CHANNEL_DESCRIPTION = "Native incoming-offer actions bridge"
+
+    private val displayedOffers = ConcurrentHashMap<String, Long>()
 
     fun showIncomingOfferNotification(
         context: Context,
@@ -24,12 +27,30 @@ object IncomingOfferNotificationHelper {
         notificationType: String?,
         title: String?,
         body: String?,
+        moduleType: String? = null,
+        orderType: String? = null,
         expiresInMs: Long = DEFAULT_EXPIRE_MS,
     ) {
         createNotificationChannel(context)
 
         val notificationId = resolveNotificationId(orderId)
         val eventToken = UUID.randomUUID().toString()
+        val expiresAt = System.currentTimeMillis() + expiresInMs
+
+        val fullScreenIntent = buildOfferActivityIntent(
+            context = context,
+            orderId = orderId,
+            type = type,
+            notificationType = notificationType,
+            title = title,
+            body = body,
+            moduleType = moduleType,
+            orderType = orderType,
+            eventToken = eventToken,
+            notificationId = notificationId,
+            expiresAt = expiresAt,
+            requestCode = notificationId + 90,
+        )
 
         val openIntent = buildActionIntent(
             context = context,
@@ -39,8 +60,11 @@ object IncomingOfferNotificationHelper {
             notificationType = notificationType,
             title = title,
             body = body,
+            moduleType = moduleType,
+            orderType = orderType,
             eventToken = eventToken,
             notificationId = notificationId,
+            expiresAt = expiresAt,
             requestCode = notificationId + 1,
         )
         val acceptIntent = buildActionIntent(
@@ -51,8 +75,11 @@ object IncomingOfferNotificationHelper {
             notificationType = notificationType,
             title = title,
             body = body,
+            moduleType = moduleType,
+            orderType = orderType,
             eventToken = eventToken,
             notificationId = notificationId,
+            expiresAt = expiresAt,
             requestCode = notificationId + 2,
         )
         val declineIntent = buildActionIntent(
@@ -63,8 +90,11 @@ object IncomingOfferNotificationHelper {
             notificationType = notificationType,
             title = title,
             body = body,
+            moduleType = moduleType,
+            orderType = orderType,
             eventToken = eventToken,
             notificationId = notificationId,
+            expiresAt = expiresAt,
             requestCode = notificationId + 3,
         )
 
@@ -72,7 +102,10 @@ object IncomingOfferNotificationHelper {
             .setSmallIcon(R.drawable.notification_icon)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setAutoCancel(true)
+            .setOngoing(true)
+            .setFullScreenIntent(fullScreenIntent, true)
             .setContentTitle(title ?: "Nova oferta")
             .setContentText(body ?: "Você recebeu uma nova oferta.")
             .setContentIntent(openIntent)
@@ -82,6 +115,20 @@ object IncomingOfferNotificationHelper {
             .build()
 
         NotificationManagerCompat.from(context).notify(notificationId, notification)
+        maybeLaunchIncomingOfferActivity(
+            context = context,
+            orderId = orderId,
+            type = type,
+            notificationType = notificationType,
+            title = title,
+            body = body,
+            moduleType = moduleType,
+            orderType = orderType,
+            eventToken = eventToken,
+            notificationId = notificationId,
+            expiresAt = expiresAt,
+            force = true,
+        )
         scheduleExpiryBroadcast(
             context = context,
             orderId = orderId,
@@ -89,15 +136,74 @@ object IncomingOfferNotificationHelper {
             notificationType = notificationType,
             title = title,
             body = body,
+            moduleType = moduleType,
+            orderType = orderType,
             eventToken = eventToken,
             notificationId = notificationId,
-            expiresAt = System.currentTimeMillis() + expiresInMs,
+            expiresAt = expiresAt,
             requestCode = notificationId + 4,
         )
     }
 
     fun resolveNotificationId(orderId: String?): Int {
         return orderId?.hashCode()?.let { kotlin.math.abs(it) } ?: (System.currentTimeMillis() % Int.MAX_VALUE).toInt()
+    }
+
+    fun maybeLaunchIncomingOfferActivity(
+        context: Context,
+        orderId: String?,
+        type: String?,
+        notificationType: String?,
+        title: String?,
+        body: String?,
+        moduleType: String?,
+        orderType: String?,
+        eventToken: String,
+        notificationId: Int,
+        expiresAt: Long,
+        force: Boolean = false,
+    ) {
+        if (!force && !shouldBringActivityToFront(orderId, expiresAt)) {
+            return
+        }
+
+        val intent = Intent(context, IncomingOfferActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            putOfferExtras(
+                orderId = orderId,
+                type = type,
+                notificationType = notificationType,
+                title = title,
+                body = body,
+                moduleType = moduleType,
+                orderType = orderType,
+                eventToken = eventToken,
+                notificationId = notificationId,
+                expiresAt = expiresAt,
+            )
+        }
+
+        runCatching {
+            context.startActivity(intent)
+            markOfferAsDisplayed(orderId)
+        }
+    }
+
+    fun shouldBringActivityToFront(orderId: String?, expiresAt: Long): Boolean {
+        if (orderId.isNullOrBlank()) {
+            return true
+        }
+        val now = System.currentTimeMillis()
+        displayedOffers.entries.removeIf { (_, value) -> value <= now }
+        val existingExpiry = displayedOffers[orderId] ?: return true
+        return existingExpiry < now || existingExpiry < expiresAt
+    }
+
+    fun markOfferAsDisplayed(orderId: String?) {
+        if (orderId.isNullOrBlank()) {
+            return
+        }
+        displayedOffers[orderId] = System.currentTimeMillis() + DEFAULT_EXPIRE_MS
     }
 
     private fun createNotificationChannel(context: Context) {
@@ -113,6 +219,44 @@ object IncomingOfferNotificationHelper {
         manager?.createNotificationChannel(channel)
     }
 
+    private fun buildOfferActivityIntent(
+        context: Context,
+        orderId: String?,
+        type: String?,
+        notificationType: String?,
+        title: String?,
+        body: String?,
+        moduleType: String?,
+        orderType: String?,
+        eventToken: String,
+        notificationId: Int,
+        expiresAt: Long,
+        requestCode: Int,
+    ): PendingIntent {
+        val intent = Intent(context, IncomingOfferActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            putOfferExtras(
+                orderId = orderId,
+                type = type,
+                notificationType = notificationType,
+                title = title,
+                body = body,
+                moduleType = moduleType,
+                orderType = orderType,
+                eventToken = eventToken,
+                notificationId = notificationId,
+                expiresAt = expiresAt,
+            )
+        }
+
+        return PendingIntent.getActivity(
+            context,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
     private fun buildActionIntent(
         context: Context,
         action: String,
@@ -121,19 +265,27 @@ object IncomingOfferNotificationHelper {
         notificationType: String?,
         title: String?,
         body: String?,
+        moduleType: String?,
+        orderType: String?,
         eventToken: String,
         notificationId: Int,
+        expiresAt: Long,
         requestCode: Int,
     ): PendingIntent {
         val intent = Intent(context, IncomingOfferActionReceiver::class.java).apply {
             this.action = action
-            putExtra(IncomingOfferContract.EXTRA_ORDER_ID, orderId)
-            putExtra(IncomingOfferContract.EXTRA_TYPE, type)
-            putExtra(IncomingOfferContract.EXTRA_NOTIFICATION_TYPE, notificationType)
-            putExtra(IncomingOfferContract.EXTRA_TITLE, title)
-            putExtra(IncomingOfferContract.EXTRA_BODY, body)
-            putExtra(IncomingOfferContract.EXTRA_EVENT_TOKEN, eventToken)
-            putExtra(IncomingOfferContract.EXTRA_NOTIFICATION_ID, notificationId)
+            putOfferExtras(
+                orderId = orderId,
+                type = type,
+                notificationType = notificationType,
+                title = title,
+                body = body,
+                moduleType = moduleType,
+                orderType = orderType,
+                eventToken = eventToken,
+                notificationId = notificationId,
+                expiresAt = expiresAt,
+            )
         }
 
         return PendingIntent.getBroadcast(
@@ -151,6 +303,8 @@ object IncomingOfferNotificationHelper {
         notificationType: String?,
         title: String?,
         body: String?,
+        moduleType: String?,
+        orderType: String?,
         eventToken: String,
         notificationId: Int,
         expiresAt: Long,
@@ -165,11 +319,38 @@ object IncomingOfferNotificationHelper {
             notificationType = notificationType,
             title = title,
             body = body,
+            moduleType = moduleType,
+            orderType = orderType,
             eventToken = eventToken,
             notificationId = notificationId,
+            expiresAt = expiresAt,
             requestCode = requestCode,
         )
         alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, expiresAt, expireIntent)
+    }
+
+    private fun Intent.putOfferExtras(
+        orderId: String?,
+        type: String?,
+        notificationType: String?,
+        title: String?,
+        body: String?,
+        moduleType: String?,
+        orderType: String?,
+        eventToken: String,
+        notificationId: Int,
+        expiresAt: Long,
+    ) {
+        putExtra(IncomingOfferContract.EXTRA_ORDER_ID, orderId)
+        putExtra(IncomingOfferContract.EXTRA_TYPE, type)
+        putExtra(IncomingOfferContract.EXTRA_NOTIFICATION_TYPE, notificationType)
+        putExtra(IncomingOfferContract.EXTRA_TITLE, title)
+        putExtra(IncomingOfferContract.EXTRA_BODY, body)
+        putExtra(IncomingOfferContract.EXTRA_MODULE_TYPE, moduleType)
+        putExtra(IncomingOfferContract.EXTRA_ORDER_TYPE, orderType)
+        putExtra(IncomingOfferContract.EXTRA_EVENT_TOKEN, eventToken)
+        putExtra(IncomingOfferContract.EXTRA_NOTIFICATION_ID, notificationId)
+        putExtra(IncomingOfferContract.EXTRA_EXPIRES_AT, expiresAt)
     }
 
     private const val DEFAULT_EXPIRE_MS = 45_000L
