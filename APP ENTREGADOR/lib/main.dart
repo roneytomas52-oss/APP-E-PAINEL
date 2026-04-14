@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:sixam_mart_delivery/features/auth/controllers/auth_controller.dart';
+import 'package:sixam_mart_delivery/features/delivery_module/order/services/incoming_offer_dispatcher.dart';
 import 'package:sixam_mart_delivery/features/language/controllers/language_controller.dart';
 import 'package:sixam_mart_delivery/features/splash/controllers/splash_controller.dart';
 import 'package:sixam_mart_delivery/common/controllers/theme_controller.dart';
@@ -44,9 +45,11 @@ Future<void> main() async {
       final RemoteMessage? remoteMessage = await FirebaseMessaging.instance.getInitialMessage();
       if(remoteMessage != null){
         body = NotificationHelper.convertNotification(remoteMessage.data);
+        IncomingOfferDispatcher.instance.dispatchFcmMessage(remoteMessage, source: 'fcm_initial');
       }
       await NotificationHelper.initialize(flutterLocalNotificationsPlugin);
       FirebaseMessaging.onBackgroundMessage(myBackgroundMessageHandler);
+      await IncomingOfferDispatcher.instance.initialize();
     }
   }catch(_) {}
 
