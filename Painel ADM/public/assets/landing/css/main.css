@@ -4180,7 +4180,8 @@ header.active::after {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  opacity: 0.2;
+  opacity: 0.3;
+  filter: contrast(1.08) saturate(1.03);
   z-index: 1;
 }
 
@@ -4188,7 +4189,7 @@ header.active::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.78) 0%, rgba(247, 250, 248, 0.9) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(247, 250, 248, 0.86) 100%);
   z-index: 2;
 }
 
