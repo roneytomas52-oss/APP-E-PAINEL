@@ -4200,8 +4200,10 @@ header.active::after {
 }
 
 .banner-content {
-  max-width: 780px;
-  padding: 56px 0 28px;
+  max-width: 860px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 72px 0 54px;
 }
 
 .banner-content .title {
@@ -4215,13 +4217,14 @@ header.active::after {
 
 .banner-content .text {
   max-width: 620px;
+  margin: 0 auto;
   font-size: 1.05rem;
   line-height: 1.7;
   color: #58655f;
 }
 
 .banner-svg-img {
-  opacity: 0.95;
+  display: none;
 }
 
 .section-header {
