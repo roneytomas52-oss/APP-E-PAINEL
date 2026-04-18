@@ -4167,6 +4167,35 @@ header.active::after {
 .banner-section {
   background: linear-gradient(180deg, #ffffff 0%, #f7faf8 100%);
   padding-top: 32px;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.banner-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("../img/main-banner.svg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.2;
+  z-index: 1;
+}
+
+.banner-section::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.78) 0%, rgba(247, 250, 248, 0.9) 100%);
+  z-index: 2;
+}
+
+.banner-section .container,
+.banner-section .banner-svg-img {
+  position: relative;
+  z-index: 3;
 }
 
 .banner-content {
