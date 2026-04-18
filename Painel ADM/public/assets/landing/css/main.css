@@ -4404,3 +4404,83 @@ header.active::after {
     border-bottom-right-radius: 40px;
   }
 }
+
+/* ===============================
+   Fox Delivery - Landing micro polish (phase 3)
+   Residual visual fixes only
+================================== */
+
+.navbar-bottom-wrapper .menu li a,
+.footer-widget.widget-links ul li a,
+.zone-list .item,
+.dropdown-menu .dropdown-item {
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.navbar-bottom-wrapper .menu li a:focus-visible,
+.footer-widget.widget-links ul li a:focus-visible,
+.dropdown-menu .dropdown-item:focus-visible {
+  outline: 2px solid rgba(var(--base-rgb), 0.65);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.navbar-bottom-wrapper .menu li a {
+  line-height: 1.35;
+}
+
+.navbar-bottom-wrapper .menu li a.active {
+  text-shadow: 0 0 10px rgba(var(--base-rgb), 0.22);
+}
+
+.zone-list .item {
+  line-height: 1.25;
+}
+
+.zone-list .item:hover,
+.zone-list .item:focus-visible {
+  background: rgba(var(--base-rgb), 0.2);
+  border-color: rgba(var(--base-rgb), 0.42);
+  color: #f3fff8;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+}
+
+.dropdown-menu .dropdown-item.active,
+.dropdown-menu .dropdown-item:active {
+  background: rgba(var(--base-rgb), 0.22);
+  color: #ffffff;
+}
+
+.newsletter-content .text,
+.delivery-area-section .text,
+.refer-section .text {
+  line-height: 1.65;
+}
+
+.footer-widget.widget-links ul li a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.5;
+}
+
+@media (max-width: 991.9px) {
+  .navbar-bottom-wrapper .menu {
+    row-gap: 4px;
+  }
+  .navbar-bottom-wrapper .menu li a {
+    padding: 8px 6px;
+  }
+}
+
+@media (max-width: 575px) {
+  .zone-list {
+    gap: 10px;
+    padding-bottom: 24px;
+  }
+
+  .zone-list .item {
+    font-size: 18px;
+    padding: 12px 18px;
+  }
+}
