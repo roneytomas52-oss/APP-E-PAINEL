@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\Store;
 use App\Models\Coupon;
 use App\Models\DMVehicle;
+use App\Models\DeliveryMan;
 use App\Models\OrderDetail;
 use App\Models\ItemCampaign;
 use Illuminate\Http\Request;
@@ -707,16 +708,112 @@ trait PlaceNewOrder
         return null;
     }
 
-    private function getVehicleExtraCharge($distance)
+    private function getVehicleExtraCharge($distance, ?int $zoneId = null, ?string $moduleType = null, float $orderAmount = 0): array
     {
-        $data =  DMVehicle::active()->where(function ($query) use ($distance) {
+        $vehicles = DMVehicle::active()->where(function ($query) use ($distance) {
             $query->where('starting_coverage_area', '<=', $distance)->where('maximum_coverage_area', '>=', $distance)
                 ->orWhere(function ($query) use ($distance) {
                     $query->where('starting_coverage_area', '>=', $distance);
                 });
         })
-            ->orderBy('starting_coverage_area')->first();
-        return ['extraCharge' => (float) (isset($data) ? $data->extra_charges  : 0), 'vehicle_id' => $data?->id];
+            ->orderBy('starting_coverage_area')
+            ->get();
+
+        if ($vehicles->isEmpty()) {
+            return ['extraCharge' => 0, 'vehicle_id' => null];
+        }
+
+        $priorities = $this->vehiclePriorityByContext($moduleType, (float)$distance, $orderAmount);
+        $sortedVehicles = $vehicles->sortBy(function ($vehicle) use ($priorities) {
+            return $this->vehiclePriorityIndex($vehicle->name ?? $vehicle->type, $priorities);
+        })->values();
+
+        $selectedVehicle = $sortedVehicles->first();
+        $vehicleId = $selectedVehicle?->id;
+
+        if ($vehicleId && $zoneId) {
+            $availableVehicle = $sortedVehicles->first(function ($vehicle) use ($zoneId) {
+                return $this->hasAvailableDeliveryManForVehicle($zoneId, $vehicle->id);
+            });
+
+            if ($availableVehicle) {
+                $selectedVehicle = $availableVehicle;
+                $vehicleId = $availableVehicle->id;
+            } else {
+                $vehicleId = null;
+            }
+        }
+
+        return ['extraCharge' => (float) ($selectedVehicle?->extra_charges ?? 0), 'vehicle_id' => $vehicleId];
+    }
+
+    private function hasAvailableDeliveryManForVehicle(int $zoneId, int $vehicleId): bool
+    {
+        return DeliveryMan::query()
+            ->where('zone_id', $zoneId)
+            ->where('vehicle_id', $vehicleId)
+            ->available()
+            ->active()
+            ->exists();
+    }
+
+    private function vehiclePriorityByContext(?string $moduleType, float $distance, float $orderAmount): array
+    {
+        $moduleType = strtolower((string)$moduleType);
+
+        if (in_array($moduleType, ['grocery', 'ecommerce']) && $orderAmount >= 200) {
+            return ['carro', 'utilitario', 'moto', 'bicicleta', 'a pe'];
+        }
+
+        if (in_array($moduleType, ['pharmacy', 'pet']) && $distance <= 3) {
+            return ['bicicleta', 'moto', 'carro', 'utilitario', 'a pe'];
+        }
+
+        if ($distance <= 1.5) {
+            return ['a pe', 'bicicleta', 'moto', 'carro', 'utilitario'];
+        }
+
+        if ($distance <= 3) {
+            return ['bicicleta', 'moto', 'carro', 'utilitario', 'a pe'];
+        }
+
+        return ['moto', 'carro', 'utilitario', 'bicicleta', 'a pe'];
+    }
+
+    private function vehiclePriorityIndex(?string $vehicleName, array $priorities): int
+    {
+        $normalized = $this->normalizeVehicleName($vehicleName);
+        $index = array_search($normalized, $priorities, true);
+
+        return $index === false ? PHP_INT_MAX : $index;
+    }
+
+    private function normalizeVehicleName(?string $vehicleName): string
+    {
+        $value = strtolower((string)$vehicleName);
+        $value = str_replace(['á', 'à', 'ã', 'â'], 'a', $value);
+        $value = str_replace(['é', 'ê'], 'e', $value);
+        $value = str_replace(['í'], 'i', $value);
+        $value = str_replace(['ó', 'ô', 'õ'], 'o', $value);
+        $value = str_replace(['ú'], 'u', $value);
+
+        if (str_contains($value, 'utilitario') || str_contains($value, 'van')) {
+            return 'utilitario';
+        }
+        if (str_contains($value, 'bike') || str_contains($value, 'bicicleta')) {
+            return 'bicicleta';
+        }
+        if (str_contains($value, 'carro')) {
+            return 'carro';
+        }
+        if (str_contains($value, 'moto')) {
+            return 'moto';
+        }
+        if (str_contains($value, 'a pe') || str_contains($value, 'ape')) {
+            return 'a pe';
+        }
+
+        return trim($value);
     }
     private function getZoneAndStore($request, $schedule_at)
     {
@@ -874,7 +971,12 @@ trait PlaceNewOrder
         if ($surge['price'] > 0) {
             $increased = $surge['price'];
         }
-        $vehicleExtraCharge = $this->getVehicleExtraCharge($request->distance ?? 0);
+        $vehicleExtraCharge = $this->getVehicleExtraCharge(
+            distance: $request->distance ?? 0,
+            zoneId: $zone?->id,
+            moduleType: $store?->module?->module_type ?? null,
+            orderAmount: (float)($request->order_amount ?? 0)
+        );
         $extra_charges = $vehicleExtraCharge['extraCharge'];
         $vehicle_id = $vehicleExtraCharge['vehicle_id'];
 
