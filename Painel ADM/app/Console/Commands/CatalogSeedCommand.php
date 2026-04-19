@@ -284,8 +284,8 @@ class CatalogSeedCommand extends Command
         if (!$mapped) {
             $mapped = [
                 'file' => "main-{$moduleType}-{$categoryKey}.svg",
-                'icon' => 'bag',
-                'bg' => '#F3F4F6',
+                'label' => $categoryName,
+                'emoji' => '🛍️',
             ];
         }
 
@@ -317,15 +317,21 @@ class CatalogSeedCommand extends Command
             return;
         }
 
-        $background = e($mapped['bg'] ?? '#F3F4F6');
-        $iconName = (string)($mapped['icon'] ?? 'bag');
-        $icon = $this->minimalIconSvg($iconName);
+        $label = e($mapped['label'] ?? 'Categoria');
+        $emoji = e($mapped['emoji'] ?? '🛍️');
 
         $svg = <<<SVG
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="{$background}"/>
-  <rect x="96" y="96" width="320" height="320" rx="80" fill="#FFFFFF"/>
-  {$icon}
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1f2937"/>
+      <stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#bg)"/>
+  <text x="60" y="180" font-family="Arial, sans-serif" font-size="120" fill="#22c55e">{$emoji}</text>
+  <text x="60" y="290" font-family="Arial, sans-serif" font-size="62" font-weight="700" fill="#ffffff">{$label}</text>
+  <text x="60" y="350" font-family="Arial, sans-serif" font-size="30" fill="#93c5fd">Categoria principal</text>
 </svg>
 SVG;
 
@@ -346,73 +352,43 @@ SVG;
     {
         return [
             '*' => [
-                'hamburguer' => ['file' => 'main-hamburguer.svg', 'icon' => 'burger', 'bg' => '#FDEBD2'],
-                'pizza' => ['file' => 'main-pizza.svg', 'icon' => 'pizza', 'bg' => '#FEE2E2'],
-                'japonesa' => ['file' => 'main-japonesa.svg', 'icon' => 'sushi', 'bg' => '#EDE9FE'],
-                'acai' => ['file' => 'main-acai.svg', 'icon' => 'cup', 'bg' => '#E9D5FF'],
-                'hortifruti' => ['file' => 'main-hortifruti.svg', 'icon' => 'leaf', 'bg' => '#DCFCE7'],
-                'medicamentos' => ['file' => 'main-medicamentos.svg', 'icon' => 'pill', 'bg' => '#DBEAFE'],
-                'documentos' => ['file' => 'main-documentos.svg', 'icon' => 'document', 'bg' => '#E5E7EB'],
-                'moda' => ['file' => 'main-moda.svg', 'icon' => 'shirt', 'bg' => '#FCE7F3'],
+                'hamburguer' => ['file' => 'main-hamburguer.svg', 'label' => 'Hambúrguer', 'emoji' => '🍔'],
+                'pizza' => ['file' => 'main-pizza.svg', 'label' => 'Pizza', 'emoji' => '🍕'],
+                'japonesa' => ['file' => 'main-japonesa.svg', 'label' => 'Japonesa', 'emoji' => '🍣'],
+                'acai' => ['file' => 'main-acai.svg', 'label' => 'Açaí', 'emoji' => '🫐'],
+                'hortifruti' => ['file' => 'main-hortifruti.svg', 'label' => 'Hortifruti', 'emoji' => '🥬'],
+                'medicamentos' => ['file' => 'main-medicamentos.svg', 'label' => 'Medicamentos', 'emoji' => '💊'],
+                'documentos' => ['file' => 'main-documentos.svg', 'label' => 'Documentos', 'emoji' => '📄'],
+                'moda' => ['file' => 'main-moda.svg', 'label' => 'Moda', 'emoji' => '👕'],
             ],
             'food' => [
-                'promocoes' => ['file' => 'main-promocoes.svg', 'icon' => 'tag', 'bg' => '#FFEDD5'],
-                'mais-vendidos' => ['file' => 'main-mais-vendidos.svg', 'icon' => 'star', 'bg' => '#FEF3C7'],
-                'combos' => ['file' => 'main-combos.svg', 'icon' => 'combo', 'bg' => '#FFE4E6'],
-                'entrega-rapida' => ['file' => 'main-entrega-rapida.svg', 'icon' => 'delivery', 'bg' => '#D1FAE5'],
-                'economicos-ate-r-30' => ['file' => 'main-economicos.svg', 'icon' => 'money', 'bg' => '#CCFBF1'],
-                'lanches' => ['file' => 'main-lanches.svg', 'icon' => 'burger', 'bg' => '#FDEBD2'],
-                'comida-brasileira' => ['file' => 'main-comida-brasileira.svg', 'icon' => 'plate', 'bg' => '#FCE7F3'],
-                'bebidas' => ['file' => 'main-bebidas.svg', 'icon' => 'drink', 'bg' => '#DBEAFE'],
+                'promocoes' => ['file' => 'main-promocoes.svg', 'label' => 'Promoções', 'emoji' => '🏷️'],
+                'mais-vendidos' => ['file' => 'main-mais-vendidos.svg', 'label' => 'Mais vendidos', 'emoji' => '🔥'],
+                'combos' => ['file' => 'main-combos.svg', 'label' => 'Combos', 'emoji' => '🍽️'],
+                'entrega-rapida' => ['file' => 'main-entrega-rapida.svg', 'label' => 'Entrega rápida', 'emoji' => '🛵'],
+                'economicos-ate-r-30' => ['file' => 'main-economicos.svg', 'label' => 'Econômicos', 'emoji' => '💸'],
+                'lanches' => ['file' => 'main-lanches.svg', 'label' => 'Lanches', 'emoji' => '🥪'],
+                'comida-brasileira' => ['file' => 'main-comida-brasileira.svg', 'label' => 'Comida Brasileira', 'emoji' => '🍛'],
+                'bebidas' => ['file' => 'main-bebidas.svg', 'label' => 'Bebidas', 'emoji' => '🥤'],
             ],
             'grocery' => [
-                'mercearia' => ['file' => 'main-mercearia.svg', 'icon' => 'basket', 'bg' => '#E0F2FE'],
-                'limpeza' => ['file' => 'main-limpeza.svg', 'icon' => 'spray', 'bg' => '#E0E7FF'],
+                'mercearia' => ['file' => 'main-mercearia.svg', 'label' => 'Mercearia', 'emoji' => '🛒'],
+                'limpeza' => ['file' => 'main-limpeza.svg', 'label' => 'Limpeza', 'emoji' => '🧽'],
             ],
             'pharmacy' => [
-                'higiene-pessoal' => ['file' => 'main-higiene-pessoal.svg', 'icon' => 'bottle', 'bg' => '#ECFEFF'],
-                'vitaminas' => ['file' => 'main-vitaminas.svg', 'icon' => 'capsule', 'bg' => '#E0F2FE'],
-                'infantil' => ['file' => 'main-infantil.svg', 'icon' => 'baby', 'bg' => '#FCE7F3'],
+                'higiene-pessoal' => ['file' => 'main-higiene-pessoal.svg', 'label' => 'Higiene Pessoal', 'emoji' => '🧴'],
+                'vitaminas' => ['file' => 'main-vitaminas.svg', 'label' => 'Vitaminas', 'emoji' => '🧬'],
+                'infantil' => ['file' => 'main-infantil.svg', 'label' => 'Infantil', 'emoji' => '🧸'],
             ],
             'ecommerce' => [
-                'eletronicos' => ['file' => 'main-eletronicos.svg', 'icon' => 'device', 'bg' => '#EDE9FE'],
-                'casa-e-cozinha' => ['file' => 'main-casa-cozinha.svg', 'icon' => 'home', 'bg' => '#F3F4F6'],
-                'beleza' => ['file' => 'main-beleza.svg', 'icon' => 'spark', 'bg' => '#FCE7F3'],
+                'eletronicos' => ['file' => 'main-eletronicos.svg', 'label' => 'Eletrônicos', 'emoji' => '📱'],
+                'casa-e-cozinha' => ['file' => 'main-casa-cozinha.svg', 'label' => 'Casa e Cozinha', 'emoji' => '🏠'],
+                'beleza' => ['file' => 'main-beleza.svg', 'label' => 'Beleza', 'emoji' => '💄'],
             ],
             'parcel' => [
-                'pacotes' => ['file' => 'main-pacotes.svg', 'icon' => 'box', 'bg' => '#E5E7EB'],
+                'pacotes' => ['file' => 'main-pacotes.svg', 'label' => 'Pacotes', 'emoji' => '📦'],
             ],
         ];
-    }
-
-    private function minimalIconSvg(string $icon): string
-    {
-        return match ($icon) {
-            'burger' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><path d="M180 232h152"/><path d="M168 264h176"/><path d="M188 296h136"/><path d="M176 216c8-28 32-44 80-44s72 16 80 44"/></g>',
-            'pizza' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><path d="M172 324l84-176 84 176z"/><circle cx="256" cy="232" r="8" fill="#111827" stroke="none"/><circle cx="224" cy="274" r="8" fill="#111827" stroke="none"/><circle cx="288" cy="274" r="8" fill="#111827" stroke="none"/></g>',
-            'sushi' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><rect x="176" y="216" width="160" height="96" rx="24"/><path d="M208 216v96M304 216v96"/></g>',
-            'cup' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><path d="M196 196h120l-20 124h-80z"/><path d="M224 176l12 20M256 168l8 28M288 176l-10 20"/></g>',
-            'leaf' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><path d="M180 280c0-68 56-116 132-116-2 74-50 132-116 132"/><path d="M212 256c24-12 56-34 84-68"/></g>',
-            'pill', 'capsule' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><rect x="176" y="216" width="160" height="80" rx="40"/><path d="M256 216v80"/></g>',
-            'document' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><path d="M208 164h96l40 40v144a20 20 0 0 1-20 20H208a20 20 0 0 1-20-20V184a20 20 0 0 1 20-20z"/><path d="M304 164v48h48"/><path d="M224 272h96M224 312h72"/></g>',
-            'shirt' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><path d="M208 192l48 24 48-24 44 40-32 40v96H196v-96l-32-40z"/></g>',
-            'tag' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><path d="M188 220h108l44 44-88 88-64-64z"/><circle cx="236" cy="252" r="8" fill="#111827" stroke="none"/></g>',
-            'star' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><path d="M256 172l26 54 60 8-44 42 10 60-52-28-52 28 10-60-44-42 60-8z"/></g>',
-            'combo' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><circle cx="220" cy="256" r="46"/><rect x="268" y="220" width="56" height="72" rx="12"/></g>',
-            'delivery' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><rect x="176" y="228" width="120" height="72" rx="14"/><path d="M296 244h30l18 20v36h-48"/><circle cx="220" cy="316" r="14"/><circle cx="308" cy="316" r="14"/></g>',
-            'money' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><rect x="172" y="212" width="168" height="100" rx="16"/><circle cx="256" cy="262" r="24"/><path d="M190 236h12M310 288h12"/></g>',
-            'plate' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><circle cx="256" cy="256" r="84"/><circle cx="256" cy="256" r="38"/></g>',
-            'drink' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><path d="M220 180h72l-12 152h-48z"/><path d="M236 180l-16-24"/><path d="M286 208h28"/></g>',
-            'basket' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><path d="M180 224h152l-16 104H196z"/><path d="M216 224l40-44 40 44"/></g>',
-            'spray' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><rect x="220" y="212" width="72" height="132" rx="16"/><path d="M236 212v-32h40v32"/><path d="M292 232h24"/></g>',
-            'bottle' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><path d="M236 176h40v36l16 28v92a20 20 0 0 1-20 20h-32a20 20 0 0 1-20-20v-92l16-28z"/></g>',
-            'baby' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><circle cx="256" cy="230" r="36"/><path d="M196 320c8-36 34-56 60-56s52 20 60 56"/><circle cx="242" cy="228" r="4" fill="#111827" stroke="none"/><circle cx="270" cy="228" r="4" fill="#111827" stroke="none"/></g>',
-            'device' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><rect x="212" y="164" width="88" height="184" rx="16"/><path d="M242 332h28"/></g>',
-            'home' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><path d="M176 248l80-68 80 68"/><path d="M204 244v104h104V244"/></g>',
-            'spark' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><path d="M256 176l18 42 42 18-42 18-18 42-18-42-42-18 42-18z"/></g>',
-            'box' => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><path d="M180 224l76-36 76 36-76 36z"/><path d="M180 224v88l76 36 76-36v-88"/></g>',
-            default => '<g fill="none" stroke="#111827" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><path d="M196 220h120l20 112H176z"/><path d="M220 220a36 36 0 0 1 72 0"/></g>',
-        };
     }
 
     private function resolveFallbackImage(string $moduleType, string $defaultImage, bool $ensure): string
