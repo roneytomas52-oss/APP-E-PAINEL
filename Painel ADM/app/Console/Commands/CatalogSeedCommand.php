@@ -20,6 +20,8 @@ class CatalogSeedCommand extends Command
                             {--module-ids= : Comma separated module IDs}
                             {--module-types= : Comma separated module types}
                             {--default-image=def.png : Ultimate fallback image filename}
+                            {--fill-missing-images : Fill only missing images on existing main categories}
+                            {--refresh-images : Refresh images for all existing main categories}
                             {--with-images : Try to fetch category images from external API}
                             {--image-source=auto : auto|pexels|unsplash|none}
                             {--pexels-api-key= : Pexels API key (optional, fallback ENV PEXELS_API_KEY)}
@@ -45,6 +47,8 @@ class CatalogSeedCommand extends Command
 
         $dryRun = (bool)$this->option('dry-run');
         $withImages = (bool)$this->option('with-images');
+        $fillMissingImages = (bool)$this->option('fill-missing-images');
+        $refreshImages = (bool)$this->option('refresh-images');
         $imageSource = strtolower((string)$this->option('image-source'));
         $defaultImage = (string)$this->option('default-image');
         $economicalThreshold = max(1, (int)$this->option('economical-threshold'));
@@ -61,7 +65,9 @@ class CatalogSeedCommand extends Command
             'found_main' => 0,
             'found_sub' => 0,
             'images_from_api' => 0,
+            'images_refreshed' => 0,
             'images_from_fallback' => 0,
+            'images_from_local_map' => 0,
         ];
 
         foreach ($modules as $module) {
@@ -83,6 +89,8 @@ class CatalogSeedCommand extends Command
                     parentId: 0,
                     position: 0,
                     withImages: $withImages,
+                    fillMissingImages: $fillMissingImages,
+                    refreshImages: $refreshImages,
                     imageSource: $imageSource,
                     defaultImage: $defaultImage,
                     dryRun: $dryRun,
@@ -97,6 +105,8 @@ class CatalogSeedCommand extends Command
                         parentId: $mainCategory?->id ?? 0,
                         position: 1,
                         withImages: $withImages,
+                        fillMissingImages: $fillMissingImages,
+                        refreshImages: $refreshImages,
                         imageSource: $imageSource,
                         defaultImage: $defaultImage,
                         dryRun: $dryRun,
@@ -112,7 +122,9 @@ class CatalogSeedCommand extends Command
         $this->line("Main categories already existing: {$stats['found_main']}");
         $this->line("Subcategories already existing: {$stats['found_sub']}");
         $this->line("Images from API: {$stats['images_from_api']}");
+        $this->line("Images from local map: {$stats['images_from_local_map']}");
         $this->line("Images from fallback/local: {$stats['images_from_fallback']}");
+        $this->line("Existing images refreshed: {$stats['images_refreshed']}");
 
         return self::SUCCESS;
     }
@@ -124,6 +136,8 @@ class CatalogSeedCommand extends Command
         int $parentId,
         int $position,
         bool $withImages,
+        bool $fillMissingImages,
+        bool $refreshImages,
         string $imageSource,
         string $defaultImage,
         bool $dryRun,
@@ -143,10 +157,25 @@ class CatalogSeedCommand extends Command
         if ($existing) {
             $stats[$position === 0 ? 'found_main' : 'found_sub']++;
 
-            if (!$dryRun && !$hasExistingImage) {
-                $fallbackImage = $this->resolveFallbackImage($moduleType, $defaultImage, false);
-                $this->categoryRepo->update((string)$existing->id, ['image' => $fallbackImage]);
-                $stats['images_from_fallback']++;
+            if (!$dryRun && $position === 0) {
+                $shouldFillMissing = $fillMissingImages && !$hasExistingImage;
+                $shouldRefresh = $refreshImages;
+
+                if ($shouldFillMissing || $shouldRefresh) {
+                    $resolvedMainImage = $this->resolveMainCategoryImage(
+                        moduleType: $moduleType,
+                        categoryName: $name,
+                        withImages: $withImages,
+                        imageSource: $imageSource,
+                        defaultImage: $defaultImage,
+                        countApiHit: $stats
+                    );
+
+                    if ($existing->image !== $resolvedMainImage) {
+                        $this->categoryRepo->update((string)$existing->id, ['image' => $resolvedMainImage]);
+                        $stats['images_refreshed']++;
+                    }
+                }
             }
 
             if (!$dryRun && ($payload['special'] ?? false)) {
@@ -169,14 +198,20 @@ class CatalogSeedCommand extends Command
             return null;
         }
 
-        $resolvedImage = $this->resolveImage(
-            moduleType: $moduleType,
-            categoryName: $name,
-            withImages: $withImages,
-            imageSource: $imageSource,
-            defaultImage: $defaultImage,
-            countApiHit: $stats
-        );
+        $resolvedImage = $position === 0
+            ? $this->resolveMainCategoryImage(
+                moduleType: $moduleType,
+                categoryName: $name,
+                withImages: $withImages,
+                imageSource: $imageSource,
+                defaultImage: $defaultImage,
+                countApiHit: $stats
+            )
+            : $this->resolveSubCategoryImage(
+                categoryName: $name,
+                withImages: $withImages,
+                imageSource: $imageSource
+            );
 
         $created = $this->categoryRepo->add([
             'name' => $name,
@@ -203,7 +238,7 @@ class CatalogSeedCommand extends Command
         return $created;
     }
 
-    private function resolveImage(
+    private function resolveMainCategoryImage(
         string $moduleType,
         string $categoryName,
         bool $withImages,
@@ -211,6 +246,12 @@ class CatalogSeedCommand extends Command
         string $defaultImage,
         array &$countApiHit
     ): string {
+        $localMappedImage = $this->resolveMainCategoryLocalImage($moduleType, $categoryName);
+        if ($localMappedImage) {
+            $countApiHit['images_from_local_map']++;
+            return $localMappedImage;
+        }
+
         if ($withImages && $imageSource !== 'none') {
             $downloaded = $this->downloadCategoryImage($categoryName, $imageSource);
             if ($downloaded) {
@@ -221,6 +262,133 @@ class CatalogSeedCommand extends Command
 
         $countApiHit['images_from_fallback']++;
         return $this->resolveFallbackImage($moduleType, $defaultImage, true);
+    }
+
+    private function resolveSubCategoryImage(string $categoryName, bool $withImages, string $imageSource): ?string
+    {
+        if ($withImages && $imageSource !== 'none') {
+            return $this->downloadCategoryImage($categoryName, $imageSource);
+        }
+
+        return null;
+    }
+
+    private function resolveMainCategoryLocalImage(string $moduleType, string $categoryName): ?string
+    {
+        $disk = Storage::disk(Helpers::getDisk());
+        $targetDir = 'category';
+        $categoryKey = $this->normalizeCategoryKey($categoryName);
+        $map = $this->mainCategoryImageMap();
+        $mapped = $map[$moduleType][$categoryKey] ?? $map['*'][$categoryKey] ?? null;
+
+        if (!$mapped) {
+            $mapped = [
+                'file' => "main-{$moduleType}-{$categoryKey}.svg",
+                'label' => $categoryName,
+                'emoji' => '🛍️',
+            ];
+        }
+
+        $this->ensureLocalSeedSvg($mapped);
+        $publicAssetPath = public_path('assets/admin/img/category-seed/' . $mapped['file']);
+        if (!is_file($publicAssetPath)) {
+            return null;
+        }
+
+        if (!$disk->exists($targetDir)) {
+            $disk->makeDirectory($targetDir);
+        }
+        if (!$disk->exists("{$targetDir}/{$mapped['file']}")) {
+            $disk->put("{$targetDir}/{$mapped['file']}", file_get_contents($publicAssetPath));
+        }
+
+        return $mapped['file'];
+    }
+
+    private function ensureLocalSeedSvg(array $mapped): void
+    {
+        $seedDir = public_path('assets/admin/img/category-seed');
+        if (!is_dir($seedDir)) {
+            @mkdir($seedDir, 0755, true);
+        }
+
+        $filePath = $seedDir . DIRECTORY_SEPARATOR . $mapped['file'];
+        if (is_file($filePath)) {
+            return;
+        }
+
+        $label = e($mapped['label'] ?? 'Categoria');
+        $emoji = e($mapped['emoji'] ?? '🛍️');
+
+        $svg = <<<SVG
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1f2937"/>
+      <stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#bg)"/>
+  <text x="60" y="180" font-family="Arial, sans-serif" font-size="120" fill="#22c55e">{$emoji}</text>
+  <text x="60" y="290" font-family="Arial, sans-serif" font-size="62" font-weight="700" fill="#ffffff">{$label}</text>
+  <text x="60" y="350" font-family="Arial, sans-serif" font-size="30" fill="#93c5fd">Categoria principal</text>
+</svg>
+SVG;
+
+        file_put_contents($filePath, $svg);
+    }
+
+    private function normalizeCategoryKey(string $value): string
+    {
+        return Str::of($value)
+            ->ascii()
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/', '-')
+            ->trim('-')
+            ->toString();
+    }
+
+    private function mainCategoryImageMap(): array
+    {
+        return [
+            '*' => [
+                'hamburguer' => ['file' => 'main-hamburguer.svg', 'label' => 'Hambúrguer', 'emoji' => '🍔'],
+                'pizza' => ['file' => 'main-pizza.svg', 'label' => 'Pizza', 'emoji' => '🍕'],
+                'japonesa' => ['file' => 'main-japonesa.svg', 'label' => 'Japonesa', 'emoji' => '🍣'],
+                'acai' => ['file' => 'main-acai.svg', 'label' => 'Açaí', 'emoji' => '🫐'],
+                'hortifruti' => ['file' => 'main-hortifruti.svg', 'label' => 'Hortifruti', 'emoji' => '🥬'],
+                'medicamentos' => ['file' => 'main-medicamentos.svg', 'label' => 'Medicamentos', 'emoji' => '💊'],
+                'documentos' => ['file' => 'main-documentos.svg', 'label' => 'Documentos', 'emoji' => '📄'],
+                'moda' => ['file' => 'main-moda.svg', 'label' => 'Moda', 'emoji' => '👕'],
+            ],
+            'food' => [
+                'promocoes' => ['file' => 'main-promocoes.svg', 'label' => 'Promoções', 'emoji' => '🏷️'],
+                'mais-vendidos' => ['file' => 'main-mais-vendidos.svg', 'label' => 'Mais vendidos', 'emoji' => '🔥'],
+                'combos' => ['file' => 'main-combos.svg', 'label' => 'Combos', 'emoji' => '🍽️'],
+                'entrega-rapida' => ['file' => 'main-entrega-rapida.svg', 'label' => 'Entrega rápida', 'emoji' => '🛵'],
+                'economicos-ate-r-30' => ['file' => 'main-economicos.svg', 'label' => 'Econômicos', 'emoji' => '💸'],
+                'lanches' => ['file' => 'main-lanches.svg', 'label' => 'Lanches', 'emoji' => '🥪'],
+                'comida-brasileira' => ['file' => 'main-comida-brasileira.svg', 'label' => 'Comida Brasileira', 'emoji' => '🍛'],
+                'bebidas' => ['file' => 'main-bebidas.svg', 'label' => 'Bebidas', 'emoji' => '🥤'],
+            ],
+            'grocery' => [
+                'mercearia' => ['file' => 'main-mercearia.svg', 'label' => 'Mercearia', 'emoji' => '🛒'],
+                'limpeza' => ['file' => 'main-limpeza.svg', 'label' => 'Limpeza', 'emoji' => '🧽'],
+            ],
+            'pharmacy' => [
+                'higiene-pessoal' => ['file' => 'main-higiene-pessoal.svg', 'label' => 'Higiene Pessoal', 'emoji' => '🧴'],
+                'vitaminas' => ['file' => 'main-vitaminas.svg', 'label' => 'Vitaminas', 'emoji' => '🧬'],
+                'infantil' => ['file' => 'main-infantil.svg', 'label' => 'Infantil', 'emoji' => '🧸'],
+            ],
+            'ecommerce' => [
+                'eletronicos' => ['file' => 'main-eletronicos.svg', 'label' => 'Eletrônicos', 'emoji' => '📱'],
+                'casa-e-cozinha' => ['file' => 'main-casa-cozinha.svg', 'label' => 'Casa e Cozinha', 'emoji' => '🏠'],
+                'beleza' => ['file' => 'main-beleza.svg', 'label' => 'Beleza', 'emoji' => '💄'],
+            ],
+            'parcel' => [
+                'pacotes' => ['file' => 'main-pacotes.svg', 'label' => 'Pacotes', 'emoji' => '📦'],
+            ],
+        ];
     }
 
     private function resolveFallbackImage(string $moduleType, string $defaultImage, bool $ensure): string
