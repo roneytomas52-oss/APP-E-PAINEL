@@ -51,7 +51,6 @@ class CatalogSeedCommand extends Command
                 $mainCategory = Category::withoutGlobalScopes()
                     ->where('module_id', $module->id)
                     ->where('name', $mainName)
-                    ->where('position', 0)
                     ->first();
 
                 if (!$mainCategory) {
@@ -81,8 +80,6 @@ class CatalogSeedCommand extends Command
                     $existingSub = Category::withoutGlobalScopes()
                         ->where('module_id', $module->id)
                         ->where('name', $subName)
-                        ->where('position', 1)
-                        ->where('parent_id', $mainCategory?->id ?? 0)
                         ->first();
 
                     if ($existingSub) {
@@ -172,68 +169,39 @@ class CatalogSeedCommand extends Command
     {
         return [
             'food' => [
-                'Açaí' => ['Açaí Tradicional', 'Açaí com Frutas', 'Açaí Zero Açúcar', 'Açaí no Copo'],
-                'Japonesa' => ['Sushi', 'Temaki', 'Combinados', 'Pratos Quentes'],
-                'Padaria' => ['Pães', 'Salgados', 'Café da Manhã', 'Lanches de Padaria'],
-                'Sobremesas' => ['Bolos', 'Tortas', 'Doces', 'Sorvetes'],
-                'Lanches' => ['Hambúrguer', 'Smash Burger', 'Hot Dog', 'Sanduíches'],
-                'Pizza' => ['Tradicional', 'Especial', 'Broto', 'Doce'],
-                'Marmitas' => ['Caseira', 'Fitness', 'Executiva', 'Vegetariana'],
-                'Brasileira' => ['Prato Feito', 'Churrasco', 'Feijoada', 'Regional'],
-                'Italiana' => ['Massas', 'Lasanhas', 'Risotos', 'Nhoques'],
-                'Churrasco' => ['Espetinhos', 'Parrilla', 'Porções', 'Carnes'],
-                'Saudável' => ['Saladas', 'Low Carb', 'Vegano', 'Sem Glúten'],
-                'Árabe' => ['Esfiha', 'Kibe', 'Shawarma', 'Pratos Árabes'],
-                'Frango' => ['Frango Frito', 'Frango Assado', 'Baldes', 'Porções'],
-                'Peixes e Frutos do Mar' => ['Peixes', 'Camarão', 'Moqueca', 'Combinados'],
-                'Pastelaria' => ['Pastéis', 'Caldos', 'Porções', 'Combos'],
-                'Bebidas' => ['Refrigerantes', 'Sucos', 'Água', 'Energéticos'],
+                'Lanches' => ['Hambúrguer', 'Hot Dog', 'Sanduíches'],
+                'Pizza' => ['Tradicional', 'Especial', 'Doce'],
+                'Comida Brasileira' => ['Pratos Feitos', 'Marmitas', 'Executivos'],
+                'Bebidas' => ['Refrigerantes', 'Sucos', 'Água'],
             ],
             'grocery' => [
-                'Hortifruti' => ['Frutas', 'Verduras', 'Legumes', 'Orgânicos'],
-                'Mercearia' => ['Arroz e Feijão', 'Massas', 'Enlatados', 'Molhos e Temperos'],
-                'Açougue e Peixaria' => ['Bovinos', 'Aves', 'Suínos', 'Peixes e Frutos do Mar'],
-                'Frios e Laticínios' => ['Leites', 'Queijos', 'Iogurtes', 'Manteigas'],
-                'Padaria e Matinais' => ['Pães', 'Biscoitos', 'Cereais', 'Café'],
-                'Bebidas' => ['Água', 'Refrigerante', 'Suco', 'Cerveja e Destilados'],
-                'Congelados' => ['Pratos Prontos', 'Carnes Congeladas', 'Sorvetes', 'Vegetais Congelados'],
-                'Limpeza' => ['Casa', 'Roupas', 'Utilidades', 'Desinfecção'],
-                'Higiene e Beleza' => ['Cabelo', 'Corpo e Banho', 'Cuidados Bucais', 'Papelaria Higiene'],
-                'Pet Shop' => ['Ração', 'Areia e Tapetes', 'Petiscos', 'Acessórios'],
+                'Hortifruti' => ['Frutas', 'Verduras', 'Legumes'],
+                'Mercearia' => ['Arroz e Feijão', 'Massas', 'Enlatados'],
+                'Bebidas' => ['Água', 'Refrigerante', 'Suco'],
+                'Limpeza' => ['Casa', 'Roupas', 'Utilidades'],
             ],
             'pharmacy' => [
-                'Medicamentos' => ['Genéricos', 'Referência', 'Similares', 'Controlados'],
-                'Dor e Febre' => ['Analgésicos', 'Antitérmicos', 'Enxaqueca', 'Anti-inflamatórios'],
-                'Gripe e Resfriado' => ['Antigripais', 'Tosse', 'Garganta', 'Descongestionantes'],
-                'Higiene Pessoal' => ['Sabonetes', 'Cuidados Bucais', 'Cuidados Íntimos', 'Absorventes'],
-                'Dermocosméticos' => ['Rosto', 'Corpo', 'Protetor Solar', 'Anti-idade'],
-                'Vitaminas e Suplementos' => ['Polivitamínicos', 'Imunidade', 'Esportes', 'Ômega 3'],
-                'Infantil' => ['Fraldas', 'Lenços', 'Mamadeiras', 'Cuidados com o bebê'],
-                'Primeiros Socorros' => ['Curativos', 'Antissépticos', 'Termômetros', 'Máscaras'],
-                'Bem-estar Sexual' => ['Preservativos', 'Lubrificantes', 'Testes', 'Planejamento'],
+                'Medicamentos' => ['Genéricos', 'Referência', 'Similares'],
+                'Higiene Pessoal' => ['Sabonetes', 'Cuidados Bucais', 'Cuidados Íntimos'],
+                'Vitaminas' => ['Polivitamínicos', 'Imunidade', 'Esportes'],
+                'Infantil' => ['Fraldas', 'Lenços', 'Cuidados com o bebê'],
             ],
             'ecommerce' => [
-                'Eletrônicos' => ['Celulares', 'Acessórios', 'Informática', 'Áudio e Vídeo'],
-                'Casa e Cozinha' => ['Utilidades', 'Organização', 'Decoração', 'Eletroportáteis'],
-                'Moda' => ['Masculino', 'Feminino', 'Infantil', 'Esportivo'],
-                'Beleza' => ['Maquiagem', 'Cabelo', 'Skincare', 'Perfumaria'],
-                'Papelaria e Escritório' => ['Cadernos', 'Canetas', 'Impressão', 'Organização'],
-                'Automotivo' => ['Acessórios', 'Limpeza Automotiva', 'Som Automotivo', 'Segurança'],
-                'Ferramentas e Construção' => ['Manuais', 'Elétricas', 'Hidráulica', 'Iluminação'],
-                'Games e Brinquedos' => ['Consoles', 'Jogos', 'Brinquedos', 'Colecionáveis'],
+                'Eletrônicos' => ['Celulares', 'Acessórios', 'Informática'],
+                'Casa e Cozinha' => ['Utilidades', 'Organização', 'Decoração'],
+                'Moda' => ['Masculino', 'Feminino', 'Infantil'],
+                'Beleza' => ['Maquiagem', 'Cabelo', 'Skincare'],
             ],
             'parcel' => [
-                'Documentos' => ['Envelope', 'Contrato', 'Fatura', 'Malote'],
-                'Pacotes' => ['Pequeno', 'Médio', 'Grande', 'Frágil'],
-                'Serviços Especiais' => ['Entrega Expressa', 'Entrega Programada', 'Retirada e Entrega'],
+                'Documentos' => ['Envelope', 'Contrato', 'Fatura'],
+                'Pacotes' => ['Pequeno', 'Médio', 'Grande'],
             ],
             'rental' => [
-                'Veículos' => ['Carros', 'Motos', 'Utilitários', 'Elétricos'],
-                'Equipamentos' => ['Ferramentas', 'Som e Luz', 'Eventos', 'Construção'],
-                'Imóveis por Temporada' => ['Casas', 'Apartamentos', 'Chácaras'],
+                'Veículos' => ['Carros', 'Motos', 'Utilitários'],
+                'Equipamentos' => ['Ferramentas', 'Som e Luz', 'Eventos'],
             ],
             'ride-share' => [
-                'Transporte Urbano' => ['Viagem curta', 'Viagem longa', 'Aeroporto', 'Corrida Programada'],
+                'Transporte Urbano' => ['Viagem curta', 'Viagem longa'],
             ],
             'default' => [
                 'Geral' => ['Destaques'],
