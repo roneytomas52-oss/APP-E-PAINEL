@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Module;
 use App\Models\Zone;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +23,6 @@ class CreateZoneCommand extends Command
                             {name : Zone name}
                             {--display-name= : Display name (defaults to name)}
                             {--coordinates= : Polygon in app format}
-                            {--modules= : Comma separated module IDs to attach after zone creation}
                             {--cash-on-delivery=1 : 1 or 0}
                             {--digital-payment=1 : 1 or 0}
                             {--offline-payment=0 : 1 or 0}
@@ -95,21 +93,6 @@ class CreateZoneCommand extends Command
 
             $zone->save();
 
-            $moduleIds = $this->parseModuleIds((string)$this->option('modules'));
-            if ($moduleIds === false) {
-                return null;
-            }
-
-            if (!empty($moduleIds)) {
-                $validModuleIds = Module::withoutGlobalScopes()->whereIn('id', $moduleIds)->pluck('id')->toArray();
-                if (count($validModuleIds) !== count($moduleIds)) {
-                    $invalidIds = implode(',', array_diff($moduleIds, $validModuleIds));
-                    $this->error("Invalid module IDs: {$invalidIds}");
-                    return null;
-                }
-                $zone->modules()->syncWithoutDetaching($validModuleIds);
-            }
-
             return $zone;
         });
 
@@ -123,9 +106,6 @@ class CreateZoneCommand extends Command
             $this->line("Display name: {$zone->display_name}");
         }
         $this->line('Polygon points: '.count($polygonPoints));
-        if (!empty($this->option('modules'))) {
-            $this->line('Modules attached: '.$this->option('modules'));
-        }
 
         return self::SUCCESS;
     }
@@ -170,22 +150,5 @@ class CreateZoneCommand extends Command
         }
 
         return new Polygon([new LineString($linePoints)]);
-    }
-
-    private function parseModuleIds(string $moduleInput): array|bool
-    {
-        if ($moduleInput === '') {
-            return [];
-        }
-
-        $ids = array_values(array_unique(array_filter(array_map('trim', explode(',', $moduleInput)), fn ($value) => $value !== '')));
-        foreach ($ids as $id) {
-            if (!ctype_digit($id)) {
-                $this->error("Invalid module id '{$id}'. Use comma-separated integer IDs.");
-                return false;
-            }
-        }
-
-        return array_map('intval', $ids);
     }
 }
