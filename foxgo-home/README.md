@@ -1,22 +1,40 @@
-# Fox GO Home Independente
+# Fox GO Home (deploy independente)
 
-Esta versão é uma home totalmente independente com telas novas (menu, submenu, cards e fluxos próprios).
+Homepage estática da Fox GO com experiência completa inspirada na estrutura de marketplace moderna e cadastro de loja em etapas.
 
-## O que tem
+## O que foi implementado
 
-- Navegação por telas (`#home`, `#categorias`, `#lojas`, `#clientes`, `#parceiros`, `#config`).
-- Cadastro de cliente e cadastro de loja em etapas com payload próprio do front.
-- Tela de integração para configurar os endpoints do painel (entrada e saída de dados).
-- Consumo de dados do painel para preencher cards de categorias e lojas.
+- Estrutura completa de homepage com menu, hero, categorias, destaques, como funciona, FAQ e rodapé.
+- Cadastro de cliente integrado à rota original: `POST /api/v1/auth/sign-up`.
+- Cadastro de loja em **wizard de 4 etapas**, com envio final para rota original: `POST /api/v1/auth/vendor/register`.
+- Configuração de base da API pelo navegador (salva em `localStorage`, chave `foxgo_api_base`).
 
-## Configuração
+## Rotas originais consumidas
 
-Tudo é configurado pela tela **Integração** e salvo em `localStorage` (`foxgo_integration_v2`).
+### API
+- `GET /api/v1/module`
+- `GET /api/v1/categories`
+- `GET /api/v1/banners`
+- `GET /api/v1/stores/recommended`
+- `GET /api/v1/stores/latest`
+- `POST /api/v1/auth/sign-up`
+- `POST /api/v1/auth/vendor/register`
 
-## Rodar local
+### Web
+- `POST /vendor/apply`
+- `GET /customer/auth/login`
+
+## Rodar localmente
 
 ```bash
 python3 -m http.server 8080
 ```
 
-Abrir: `http://localhost:8080/foxgo-home/`.
+Acesse: `http://localhost:8080/foxgo-home/`.
+
+## Integração de cadastro de loja
+
+- O wizard coleta dados por etapa e envia tudo no final em `multipart/form-data`.
+- O campo `translations` é gerado automaticamente com `name` e `address`.
+- `logo` é obrigatório, pois a rota original exige imagem.
+- Dependendo da configuração do backend, pode ser necessário enviar headers extras exigidos por middleware.
