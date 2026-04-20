@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fox GO Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./assets/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container topbar-inner">
+        <a class="logo" href="#home">Fox GO</a>
+        <nav class="menu">
+          <a href="#home">Home</a>
+          <a href="#explorar">Explorar</a>
+          <a href="#parceiros">Parceiros</a>
+          <a href="#clientes">Clientes</a>
+          <a href="#config">Integração</a>
+        </nav>
+      </div>
+    </header>
+
+    <div class="container app-layout">
+      <aside class="sidebar">
+        <h3>Menus</h3>
+        <a href="#home">Resumo</a>
+        <a href="#categorias">Categorias</a>
+        <a href="#lojas">Lojas</a>
+        <a href="#cards">Cards</a>
+
+        <h3>Submenus</h3>
+        <a href="#mercado">Mercado</a>
+        <a href="#farmacia">Farmácia</a>
+        <a href="#bebidas">Bebidas</a>
+        <a href="#pet">Pet</a>
+
+        <h3>Cadastros</h3>
+        <a href="#clientes">Cadastro cliente</a>
+        <a href="#parceiros">Cadastro loja</a>
+      </aside>
+
+      <main id="view" class="view"></main>
+    </div>
+
+    <template id="tpl-home">
+      <section class="panel hero">
+        <h1>Plataforma Fox GO independente</h1>
+        <p>Todas as telas, menus, submenus e cards criados de forma nova, com integração configurável para painel e banco.</p>
+        <div class="search">
+          <input id="global-search" placeholder="Buscar loja, item ou categoria" />
+          <button id="run-search" class="btn btn-primary">Buscar</button>
+        </div>
+      </section>
+      <section class="panel" id="cards">
+        <h2>Cards principais</h2>
+        <div class="cards-5">
+          <article>🍔 Restaurantes</article>
+          <article>🛒 Mercado</article>
+          <article>💊 Farmácia</article>
+          <article>🥤 Bebidas</article>
+          <article>🐶 Pet</article>
+        </div>
+      </section>
+    </template>
+
+    <template id="tpl-categorias">
+      <section class="panel" id="categorias">
+        <div class="panel-head"><h2>Categorias</h2><button id="reload-categories" class="btn">Atualizar</button></div>
+        <div id="categories-grid" class="grid"></div>
+      </section>
+    </template>
+
+    <template id="tpl-lojas">
+      <section class="panel" id="lojas">
+        <div class="panel-head"><h2>Lojas</h2><button id="reload-stores" class="btn">Atualizar</button></div>
+        <div id="stores-grid" class="grid"></div>
+      </section>
+    </template>
+
+    <template id="tpl-clientes">
+      <section class="panel" id="clientes">
+        <h2>Cadastro de Cliente</h2>
+        <form id="customer-form" class="form">
+          <input name="name" required placeholder="Nome completo" />
+          <input name="email" type="email" placeholder="E-mail" />
+          <input name="phone" required placeholder="Telefone" />
+          <input name="password" type="password" required placeholder="Senha" />
+          <button class="btn btn-primary" type="submit">Enviar cadastro</button>
+        </form>
+        <pre id="customer-response" class="console"></pre>
+      </section>
+    </template>
+
+    <template id="tpl-parceiros">
+      <section class="panel" id="parceiros">
+        <h2>Cadastro de Loja (etapas)</h2>
+        <ol class="steps" id="vendor-steps">
+          <li data-step="1" class="active">Conta</li>
+          <li data-step="2">Loja</li>
+          <li data-step="3">Local</li>
+          <li data-step="4">Mídia</li>
+        </ol>
+
+        <form id="vendor-form" class="form" enctype="multipart/form-data">
+          <section class="v-step active" data-step="1">
+            <input name="owner_name" required placeholder="Nome do responsável" />
+            <input name="owner_email" type="email" required placeholder="E-mail" />
+            <input name="owner_phone" required placeholder="Telefone" />
+            <input name="owner_password" type="password" required placeholder="Senha" />
+          </section>
+          <section class="v-step" data-step="2">
+            <input name="store_name" required placeholder="Nome da loja" />
+            <input name="store_category" required placeholder="Categoria" />
+            <input name="store_address" required placeholder="Endereço" />
+          </section>
+          <section class="v-step" data-step="3">
+            <input name="latitude" required placeholder="Latitude" value="-23.55052" />
+            <input name="longitude" required placeholder="Longitude" value="-46.633308" />
+            <input name="delivery_radius" required placeholder="Raio de entrega (km)" value="6" />
+          </section>
+          <section class="v-step" data-step="4">
+            <label class="upload">Logo <input name="logo" type="file" accept="image/*" required /></label>
+            <label class="upload">Capa <input name="cover" type="file" accept="image/*" /></label>
+          </section>
+
+          <div class="wizard-actions">
+            <button id="v-prev" type="button" class="btn">Voltar</button>
+            <button id="v-next" type="button" class="btn btn-primary">Próximo</button>
+            <button id="v-submit" type="submit" class="btn btn-primary hidden">Enviar loja</button>
+          </div>
+        </form>
+        <pre id="vendor-response" class="console"></pre>
+      </section>
+    </template>
+
+    <template id="tpl-config">
+      <section class="panel" id="config">
+        <h2>Integração com Painel e Banco</h2>
+        <p>Defina os endpoints do painel que receberão e retornarão os dados.</p>
+        <form id="integration-form" class="form">
+          <input name="baseUrl" placeholder="Base API ex: https://api.seudominio.com" />
+          <input name="categoriesPath" placeholder="Path categorias ex: /api/foxgo/categories" />
+          <input name="storesPath" placeholder="Path lojas ex: /api/foxgo/stores" />
+          <input name="searchPath" placeholder="Path busca ex: /api/foxgo/search" />
+          <input name="customerSubmitPath" placeholder="Path cadastro cliente ex: /api/foxgo/customers" />
+          <input name="vendorSubmitPath" placeholder="Path cadastro loja ex: /api/foxgo/vendors" />
+          <button class="btn btn-primary" type="submit">Salvar integração</button>
+        </form>
+        <pre id="integration-status" class="console"></pre>
+      </section>
+    </template>
+
+    <script type="module" src="./assets/app.js"></script>
+  </body>
+</html>
