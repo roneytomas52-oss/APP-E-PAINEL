@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fox GO | Plataforma de pedidos</title>
+    <meta name="description" content="Homepage Fox GO com estrutura completa inspirada no iFood e cadastro de loja em múltiplas etapas." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./assets/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container topbar-inner">
+        <a class="brand" href="#inicio">Fox GO</a>
+        <nav class="main-nav" aria-label="Navegação principal">
+          <a href="#inicio">Início</a>
+          <a href="#categorias">Categorias</a>
+          <a href="#destaques">Destaques</a>
+          <a href="#como-funciona">Como funciona</a>
+          <a href="#cadastros">Cadastros</a>
+          <a href="#faq">FAQ</a>
+        </nav>
+        <a class="btn btn-primary" href="#cadastro-loja">Cadastrar loja</a>
+      </div>
+    </header>
+
+    <main id="inicio">
+      <section class="hero section-soft">
+        <div class="container hero-grid">
+          <div>
+            <p class="badge">Entrega, mercado, farmácia e muito mais</p>
+            <h1>Peça tudo pela Fox GO com experiência premium</h1>
+            <p class="hero-subtitle">
+              Layout completo inspirado na experiência do iFood, adaptado para Fox GO,
+              mantendo integração com o backend atual para receber cadastros de clientes e lojas.
+            </p>
+            <div class="hero-actions">
+              <a class="btn btn-primary" href="#cadastro-cliente">Criar conta</a>
+              <a class="btn btn-secondary" href="#cadastro-loja">Quero vender</a>
+            </div>
+          </div>
+
+          <aside class="hero-card">
+            <h2>Conectar ao backend</h2>
+            <label for="api-base">Base da API</label>
+            <input id="api-base" type="url" placeholder="https://api.foxgo.com.br" />
+            <p class="helper">As integrações usam as rotas originais em <code>/api/v1</code>.</p>
+            <button id="save-api-base" class="btn btn-primary btn-block">Salvar</button>
+            <pre id="status-box" class="response-box small"></pre>
+          </aside>
+        </div>
+      </section>
+
+      <section id="categorias" class="section">
+        <div class="container">
+          <div class="section-head">
+            <h2>Peça por categoria</h2>
+            <button id="reload-categories" class="btn btn-secondary">Atualizar</button>
+          </div>
+          <div id="categories-grid" class="grid cards"></div>
+        </div>
+      </section>
+
+      <section id="destaques" class="section section-soft">
+        <div class="container">
+          <div class="section-head">
+            <h2>Lojas em destaque</h2>
+            <button id="reload-stores" class="btn btn-secondary">Atualizar</button>
+          </div>
+          <div id="stores-grid" class="grid cards"></div>
+        </div>
+      </section>
+
+      <section id="como-funciona" class="section">
+        <div class="container">
+          <h2>Como funciona</h2>
+          <div class="grid steps-cards">
+            <article><strong>1.</strong><p>Cliente escolhe categoria e loja.</p></article>
+            <article><strong>2.</strong><p>Pedido entra no painel com as regras atuais.</p></article>
+            <article><strong>3.</strong><p>Loja prepara e entrega com rastreio.</p></article>
+            <article><strong>4.</strong><p>Dados ficam sincronizados com banco e admin.</p></article>
+          </div>
+        </div>
+      </section>
+
+      <section id="cadastros" class="section section-soft">
+        <div class="container two-col">
+          <article id="cadastro-cliente" class="panel">
+            <h3>Cadastro de cliente</h3>
+            <p class="panel-subtitle">Rota: <code>POST /api/v1/auth/sign-up</code></p>
+            <form id="customer-form" class="form-stack">
+              <input name="name" required placeholder="Nome completo" />
+              <input name="email" type="email" placeholder="E-mail" />
+              <input name="phone" required placeholder="Telefone" />
+              <input name="password" type="password" minlength="8" required placeholder="Senha" />
+              <input name="ref_code" placeholder="Código de indicação (opcional)" />
+              <button class="btn btn-primary" type="submit">Cadastrar cliente</button>
+            </form>
+            <pre id="customer-response" class="response-box" aria-live="polite"></pre>
+          </article>
+
+          <article id="cadastro-loja" class="panel">
+            <h3>Cadastro de loja (estilo etapas)</h3>
+            <p class="panel-subtitle">Rota final: <code>POST /api/v1/auth/vendor/register</code></p>
+
+            <ol class="stepper" id="vendor-stepper">
+              <li data-step="1" class="active">Conta</li>
+              <li data-step="2">Loja</li>
+              <li data-step="3">Localização</li>
+              <li data-step="4">Mídia e envio</li>
+            </ol>
+
+            <form id="vendor-form" class="form-stack" enctype="multipart/form-data">
+              <section class="vendor-step active" data-step="1">
+                <input name="f_name" required placeholder="Nome do responsável" />
+                <input name="l_name" placeholder="Sobrenome" />
+                <input name="email" type="email" required placeholder="E-mail" />
+                <input name="phone" required placeholder="Telefone" />
+                <input name="password" type="password" required placeholder="Senha forte" />
+              </section>
+
+              <section class="vendor-step" data-step="2">
+                <input name="store_name" required placeholder="Nome da loja" />
+                <input name="store_address" required placeholder="Endereço da loja" />
+                <div class="triple">
+                  <input name="minimum_delivery_time" required placeholder="Mín. entrega" value="30" />
+                  <input name="maximum_delivery_time" required placeholder="Máx. entrega" value="45" />
+                  <input name="delivery_time_type" required placeholder="Tipo (min)" value="min" />
+                </div>
+              </section>
+
+              <section class="vendor-step" data-step="3">
+                <div class="triple">
+                  <input name="latitude" required placeholder="Latitude" value="-23.55052" />
+                  <input name="longitude" required placeholder="Longitude" value="-46.633308" />
+                  <input name="zone_id" required placeholder="Zone ID" />
+                </div>
+                <input name="module_id" required placeholder="Module ID" />
+              </section>
+
+              <section class="vendor-step" data-step="4">
+                <label class="file-field">Logo da loja (obrigatório)
+                  <input name="logo" type="file" accept="image/*" required />
+                </label>
+                <label class="file-field">Foto de capa (opcional)
+                  <input name="cover_photo" type="file" accept="image/*" />
+                </label>
+              </section>
+
+              <div class="wizard-actions">
+                <button type="button" id="vendor-prev" class="btn btn-secondary">Voltar</button>
+                <button type="button" id="vendor-next" class="btn btn-primary">Próximo</button>
+                <button type="submit" id="vendor-submit" class="btn btn-primary hidden">Enviar cadastro</button>
+              </div>
+            </form>
+
+            <pre id="vendor-response" class="response-box" aria-live="polite"></pre>
+          </article>
+        </div>
+      </section>
+
+      <section id="rotas" class="section">
+        <div class="container">
+          <h2>Rotas originais consumidas</h2>
+          <div id="routes-list" class="routes"></div>
+        </div>
+      </section>
+
+      <section id="faq" class="section section-soft">
+        <div class="container faq">
+          <h2>FAQ rápido</h2>
+          <details open>
+            <summary>Consigo hospedar essa home separada do painel?</summary>
+            <p>Sim. Esta pasta funciona como front estático e consome as APIs do painel.</p>
+          </details>
+          <details>
+            <summary>Os cadastros vão para o mesmo banco atual?</summary>
+            <p>Sim. O envio continua para as mesmas rotas originais do backend.</p>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        <p>Fox GO · Home desacoplada para deploy independente.</p>
+      </div>
+    </footer>
+
+    <script src="./assets/app.js" type="module"></script>
+  </body>
+</html>
