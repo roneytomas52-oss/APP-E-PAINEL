@@ -44,9 +44,9 @@ E no app, usar como Base URL o domínio do Admin.
 - Existe `User app and web/web/.htaccess` com regra de rewrite para SPA.
 
 ### Pontos para ajustar antes de subir para produção
-- `User app and web/web/index.html` já está com `<title>Fox GO</title>`.
-- `User app and web/web/manifest.json` já está com `name` e `short_name` como `Fox GO`.
-- `User app and web/web/index.html` já usa `canonical` para `https://www.foxgodelivery.com.br/`.
+- `User app and web/web/index.html` ainda está com `<title>6amMart</title>`.
+- `User app and web/web/manifest.json` ainda está com `name` e `short_name` iguais a `6amMart`.
+- `User app and web/web/index.html` contém `canonical` apontando para `https://6ammart-web.6amtech.com/`; trocar para o domínio final.
 - `User app and web/web/index.html` contém chave pública do Google Maps; confirmar se a key está restrita por domínio correto no Google Cloud.
 
 ## Comando sugerido de deploy (resumo)
